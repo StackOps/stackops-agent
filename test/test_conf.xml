@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<node>
+    <hardware>
+        <cpus>
+            <cpu cores="1" speed="2201" name="Intel(R) Core(TM)2 Duo CPU     T7500  @ 2.20GHz"/>
+            <cpu cores="1" speed="2201" name="Intel(R) Core(TM)2 Duo CPU     T7500  @ 2.20GHz"/>
+        </cpus>
+        <virtualization>false</virtualization>
+        <memory>4154249216</memory>
+        <nics>
+            <nic interface="eth0" type="" name="NetLink BCM5906M Fast Ethernet PCI Express"/>
+            <nic interface="wlan0" type="" name="PRO/Wireless 3945ABG [Golan] Network Connection"/>
+        </nics>
+        <partitions>
+            <partition device="/dev/sda1" mountpoint="/" used="11385692160" size="113303699456"/>
+            <partition device="proc" mountpoint="/proc" used="0" size="0"/>
+            <partition device="binfmt_misc" mountpoint="/proc/sys/fs/binfmt_misc" used="0" size="0"/>
+            <partition device="gvfs-fuse-daemon" mountpoint="/home/stackops/.gvfs" used="0" size="0"/>
+            <partition device="192.168.10.2:/mnt" mountpoint="/media/kurobox" used="684495355904" size="735971958784"/>
+        </partitions>
+    </hardware>
+    <software>
+        <os uname="Linux/stackops-dev/2.6.32-27-generic/#49-Ubuntu SMP Thu Dec 2 00:51:09 UTC 2010/x86_64/">
+            <network hostname="stackops-dev">
+                <nameserver>8.8.4.4</nameserver>
+                <nameserver>8.8.8.8</nameserver>
+                <nameserver>4.4.4.4</nameserver>
+                <iface name="eth0" default="false" virtual="false" netmask="none" address="none" dhcp="false" gateway="none"/>
+            </network>
+        </os>
+    </software>
+    <cloud/>
+</node>

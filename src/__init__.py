@@ -32,10 +32,12 @@ class Root(resource.Resource):
         str = str + '<textarea name="xml" id="xml">'
         str = str + output.getvalue()
         str = str + '</textarea>'
+	str = str + '<input type="text" name="nodeaddress" id="nodeaddress" value=""/>'
         str = str + '</div>'
         str = str + '</body>'
         str = str + '<script type="text/javascript">'
-        str = str + 'document.autoform.submit()'
+	str = str + 'document.getElementById("nodeaddress").value=document.location.href;'
+        str = str + 'document.autoform.submit();'
         str = str + '</script>'    
 
         return str
@@ -102,10 +104,13 @@ VIEWS = {
 if __name__ == '__main__':
     
     s = len(sys.argv)
+    print s
     port = 8000
     if (s==3) :
-        port = sys.argv[1]
+        port = int(sys.argv[1])
+	print port
         target = sys.argv[2]
+	print target
     root = Root()
     for viewName, className in VIEWS.items():
         #add the view to the web service

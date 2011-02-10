@@ -21,7 +21,31 @@ class Test(unittest.TestCase):
 
     def testPopulateController(self):
         f = install.Filler()
-        node = f.populateController('root', 'nova', 'localhost', '3306', 'nova', '192.168.10.10', '8773','/services/Cloud','nova.network.manager.VlanManager','192.168.0.0/12','5000')
+        node = f.populateController('verbose', 
+                                    'nodaemon', 
+                                    '/etc/nova/nova-controller.conf', 
+                                    '/var/lib/nova/bin/nova-dhcpbrige', 
+                                    'root', 
+                                    'nova', 
+                                    'mysql_host', 
+                                    '3306', 
+                                    'nova', 
+                                    'controller_host', 
+                                    '192.168.10.11', 
+                                    'nova.auth.DbDriver', 
+                                    'qemu', 
+                                    '/var/log/nova', 
+                                    '/var/lib/nova', 
+                                    's3_host', 
+                                    'rabbitmq_host', 
+                                    'ec2_host', 
+                                    '8773',
+                                    '/services/Cloud',
+                                    'nova.network.manager.VlanManager',
+                                    '192.168.0.0/12',
+                                    '5000', 
+                                    '', 
+                                    'ec2')
         node.export(sys.stdout,0)
         pass
 

@@ -29,5 +29,59 @@
             </network>
         </os>
     </software>
-    <cloud/>
+    <cloud>
+		<component name="controller">
+		    <service type="verbose"/>
+		    <service type="nodaemon"/>
+		    <service type="dhcpbridge">
+		        <property name="process" value="/var/lib/nova/bin/nova-dhcpbrige"/>
+		        <property name="file" value="/etc/nova/nova-controller.conf"/>
+		    </service>
+		    <service type="sql_connection">
+		        <property name="username" value="root"/>
+		        <property name="password" value="nova"/>
+		        <property name="host" value="mysql_host"/>
+		        <property name="port" value="3306"/>
+		        <property name="schema" value="nova"/>
+		    </service>
+		    <service type="cc_host">
+		        <property name="hostname" value="controller_host"/>
+		    </service>
+		    <service type="routing_source">
+		        <property name="ip" value="192.168.10.11"/>
+		    </service>
+		    <service type="authentication">
+		        <property name="driver" value="nova.auth.DbDriver"/>
+		    </service>
+		    <service type="libvirt">
+		        <property name="type" value="qemu"/>
+		    </service>
+		    <service type="logs">
+		        <property name="dir" value="/var/log/nova"/>
+		    </service>
+		    <service type="state">
+		        <property name="path" value="/var/lib/nova"/>
+		    </service>
+		    <service type="s3_host">
+		        <property name="hostname" value="s3_host"/>
+		    </service>
+		    <service type="rabbit_host">
+		        <property name="hostname" value="rabbitmq_host"/>
+		    </service>
+		    <service type="ec2_url">
+		        <property name="host" value="ec2_host"/>
+		        <property name="port" value="8773"/>
+		        <property name="uri" value="/services/Cloud"/>
+		    </service>
+		    <service type="network_manager">
+		        <property name="type" value="nova.network.manager.VlanManager"/>
+		        <property name="fixed_range" value="192.168.0.0/12"/>
+		        <property name="network_size" value="5000"/>
+		        <property name="flat_interface" value=""/>
+		    </service>
+		    <service type="FAKE_subdomain">
+		        <property name="value" value="ec2"/>
+		    </service>
+		</component>
+    </cloud>
 </node>

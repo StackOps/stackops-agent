@@ -295,6 +295,77 @@ class Filler(object):
         mom_host.add_property(host)
         return mom_host
 
+    def populateDhcpbridge(self, dhcpbridge_process, dhcpbridge_flagfile):
+        dhcpbridge = StackOps.service()
+        dhcpbridge.set_type('dhcpbridge')
+
+        process = StackOps.property()
+        process.set_name('process')
+        process.set_value(dhcpbridge_process)
+
+        file = StackOps.property()
+        file.set_name('file')
+        file.set_value(dhcpbridge_flagfile)
+
+        dhcpbridge.add_property(process)
+        dhcpbridge.add_property(file)
+
+        return dhcpbridge
+
+    def populateRoutingSource(self, rsip):
+        rs = StackOps.service()
+        rs.set_type('routing_source')
+        ip = StackOps.property()
+        ip.set_name('ip')
+        ip.set_value(rsip)
+        rs.add_property(ip)
+        return rs
+
+    def populateAuthentication(self, authdriver):
+        ser = StackOps.service()
+        ser.set_type('authentication')
+        driver = StackOps.property()
+        driver.set_name('driver')
+        driver.set_value(authdriver)
+        ser.add_property(driver)
+        return ser
+
+    def populateLibvirt(self, libvirt_type):
+        ser = StackOps.service()
+        ser.set_type('libvirt')
+        driver = StackOps.property()
+        driver.set_name('type')
+        driver.set_value(libvirt_type)
+        ser.add_property(driver)
+        return ser
+
+    def populateLogs(self, logdir):
+        ser = StackOps.service()
+        ser.set_type('logs')
+        driver = StackOps.property()
+        driver.set_name('dir')
+        driver.set_value(logdir)
+        ser.add_property(driver)
+        return ser
+
+    def populateState(self, statepath):
+        ser = StackOps.service()
+        ser.set_type('state')
+        driver = StackOps.property()
+        driver.set_name('path')
+        driver.set_value(statepath)
+        ser.add_property(driver)
+        return ser
+
+    def populateFakeSubdomain(self, fakesubdomain):
+        ser = StackOps.service()
+        ser.set_type('FAKE_subdomain')
+        driver = StackOps.property()
+        driver.set_name('value')
+        driver.set_value(fakesubdomain)
+        ser.add_property(driver)
+        return ser
+
     def populateControllerHost(self, controller_host):
         cc_host = StackOps.service()
         cc_host.set_type('cc_host')
@@ -307,6 +378,11 @@ class Filler(object):
     def populateVerbose(self):
         verbose = StackOps.service()
         verbose.set_type('verbose')
+        return verbose
+
+    def populateNodaemon(self):
+        verbose = StackOps.service()
+        verbose.set_type('nodaemon')
         return verbose
 
     def populateEc2Url(self, hostname, port, uri):
@@ -326,7 +402,7 @@ class Filler(object):
         ec2url.add_property(ec2url_uri)
         return ec2url
     
-    def populateNetworkManager(self,type,fixed_range,network_size):
+    def populateNetworkManager(self,type,fixed_range,network_size,flat_interface):
         network = StackOps.service()
         network.set_type('network_manager')
 
@@ -344,32 +420,90 @@ class Filler(object):
         network_size_network.set_name('network_size')
         network_size_network.set_value(network_size)
         network.add_property(network_size_network)
+
+        flat_interface_network = StackOps.property()
+        flat_interface_network.set_name('flat_interface')
+        flat_interface_network.set_value(flat_interface)
+        network.add_property(flat_interface_network)
+        
         return network
 
-    def populateController(self, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, controller_host, ec2_url_port, ec2_url_uri,network_type,network_fixed_range,network_size):
+    def populateController(self, 
+                           verbose,
+                           nodaemon,
+                           dhcpbridge_flagfile,
+                           dhcpbridge,
+                           mysql_username, 
+                           mysql_password, 
+                           mysql_hostname, 
+                           mysql_port, 
+                           mysql_schema, 
+                           controller_host,
+                           routing_source_ip,
+                           auth_driver,
+                           libvirt_type,
+                           logdir,
+                           state_path,
+                           s3_host,
+                           rabbit_host,
+                           ec2_url_host, 
+                           ec2_url_port, 
+                           ec2_url_uri,
+                           network_manager,
+                           network_fixed_range,
+                           network_size,
+                           flat_interface,
+                           FAKE_subdomain):
+        
         controller = StackOps.component()
         controller.set_name('controller')
         
+        if (verbose):
+            v = self.populateVerbose()
+            controller.add_service(v)
+
+        if (nodaemon):        
+            nd = self.populateNodaemon()
+            controller.add_service(nd)
+
+        db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
+        controller.add_service(db)
+
         sql_connection = self.populateSqlConnection(mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema)
         controller.add_service(sql_connection)
         
-        s3_host = self.populateS3Host(controller_host)
-        controller.add_service(s3_host)
-
-        mom_host = self.populateMomHost(controller_host)
-        controller.add_service(mom_host)
-
         cc_host = self.populateControllerHost(controller_host)
         controller.add_service(cc_host)
 
-        verbose = self.populateVerbose()
-        controller.add_service(verbose)
+        rsip = self.populateRoutingSource(routing_source_ip)
+        controller.add_service(rsip)
 
-        ec2_url = self.populateEc2Url(controller_host,ec2_url_port,ec2_url_uri)
-        controller.add_service(ec2_url)
+        auth = self.populateAuthentication(auth_driver)
+        controller.add_service(auth)
 
-        network_manager = self.populateNetworkManager(network_type,network_fixed_range,network_size)
+        libvirt = self.populateLibvirt(libvirt_type)
+        controller.add_service(libvirt)
+
+        logs = self.populateLogs(logdir)
+        controller.add_service(logs)
+
+        state = self.populateState(state_path)
+        controller.add_service(state)
+
+        s3 = self.populateS3Host(s3_host)
+        controller.add_service(s3)
+
+        mom = self.populateMomHost(rabbit_host)
+        controller.add_service(mom)
+
+        ec2= self.populateEc2Url(ec2_url_host,ec2_url_port,ec2_url_uri)
+        controller.add_service(ec2)
+
+        network_manager = self.populateNetworkManager(network_manager,network_fixed_range,network_size,flat_interface)
         controller.add_service(network_manager)
+
+        fakesubdomain = self.populateFakeSubdomain(FAKE_subdomain)
+        controller.add_service(fakesubdomain)
 
         return controller
         

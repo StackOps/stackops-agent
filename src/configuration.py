@@ -288,6 +288,7 @@ class ControllerConfig(Config):
         utils.execute('apt-get install -y rabbitmq-server')
         
         utils.execute('killall dnsmasq',None,None,False)
+        utils.execute('rm -fr /root/creds')
         utils.execute('mkdir /root/creds')
 
         # create the database        

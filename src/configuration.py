@@ -300,39 +300,25 @@ class Configurator(object):
             
             mysql_pass = 'nova' # temporal 
             # now let's start with the hard part
-            utils.execute('apt-cdrom add')
-            try:
-		utils.execute('apt-get update')
-            except:
-		print 'ok'
-            cmd = ['cat <<MYSQL_PRESEED | debconf-set-selections ',
-               'mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' ',
-               'mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' ',
-               'mysql-server-5.1 mysql-server/start_on_boot boolean true ',
-               'MYSQL_PRESEED']
-            utils.execute( ''.join(cmd) )
+            utils.execute('apt-cdrom add',None,None,False)
+            utils.execute('apt-get update',None,None,False)
+            
+            utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
+            utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
+            utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
 
-            try:
-                utils.execute('mount /dev/cdrom /cdrom')
-            except:
-                print 'mounted cdrom'
+            utils.execute('mount /dev/cdrom /cdrom',None,None,False)
             utils.execute('apt-get install -y mysql-server python-mysqldb')
     
             utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
             utils.execute('service mysql restart')
     
-            try:
-                utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "DROP DATABASE nova;"''')
-            except:
-                print 'ok'
+            utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "DROP DATABASE nova;"''', None,None,False)
             utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "CREATE DATABASE nova;"''')
             utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
             utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
 
-            try:
-                utils.execute('mount /dev/cdrom /cdrom')
-            except:
-                print 'remounted'
+            utils.execute('mount /dev/cdrom /cdrom',None,None,False)
             utils.execute('apt-get install -y rabbitmq-server')
 
             

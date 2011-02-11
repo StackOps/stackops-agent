@@ -44,8 +44,14 @@ class Root(resource.Resource):
 
     def render_POST(self, request):
         try:
-            str = 'This is a POST!'
-            return str
+            str = request.args["sysinfo"][0]
+            log.msg(str)
+            strio = StringIO.StringIO()
+            strio.write(str)
+            strio.seek(0)
+            xml = StackOpssubs.parse(strio)
+            self._configurator.importConfiguration(xml)
+            return 'OK!'
         except:
             er=log.err()
             request.setResponseCode(500)

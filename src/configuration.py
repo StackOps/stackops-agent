@@ -262,6 +262,47 @@ class ControllerConfig(Config):
         self._writeFile(self._filename,parameters)
         return
 
+    def install(self,xmldoc):
+        mysql_pass = self._filler.getPropertyValue(xmldoc, 'sql_connection', 'password')
+
+        # now let's start with the hard part
+        utils.execute('apt-cdrom add',None,None,False)
+        utils.execute('apt-get update',None,None,False)
+        
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
+
+        utils.execute('mount /dev/cdrom /cdrom',None,None,False)
+        utils.execute('apt-get install -y mysql-server python-mysqldb')
+
+        utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
+        utils.execute('service mysql restart')
+
+        utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "DROP DATABASE nova;"''', None,None,False)
+        utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "CREATE DATABASE nova;"''')
+        utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
+        utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
+
+        utils.execute('mount /dev/cdrom /cdrom',None,None,False)
+        utils.execute('apt-get install -y rabbitmq-server')
+        
+        utils.execute('killall dnsmasq',None,None,False)
+        utils.execute('mkdir /root/creds')
+
+        # create the database        
+        utils.execute('/var/lib/nova/bin/nova-manage db sync')
+        # create an admin user called 'admin'
+        utils.execute('/var/lib/nova/nova-manage user admin admin admin admin')
+        # create a project called 'admin' with project manager of 'admin'
+        utils.execute('/var/lib/nova/nova-manage project create admin admin')
+        # export environment variables for project 'admin' and user 'admin'
+        utils.execute('/var/lib/nova/nova-manage project env admin admin /root/creds/novarc')
+        # create a small network
+        utils.execute('/var/lib/nova/nova-manage network create 10.0.0.0/8 1 32')
+
+        return
+
 class Configurator(object):
     '''
     classdocs
@@ -297,29 +338,7 @@ class Configurator(object):
         if (component.get_name()=='controller'):
             controller = component
             self._controllerConfig.write(controller)
-            
-            mysql_pass = 'nova' # temporal 
-            # now let's start with the hard part
-            utils.execute('apt-cdrom add',None,None,False)
-            utils.execute('apt-get update',None,None,False)
-            
-            utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
-            utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
-            utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
-
-            utils.execute('mount /dev/cdrom /cdrom',None,None,False)
-            utils.execute('apt-get install -y mysql-server python-mysqldb')
-    
-            utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
-            utils.execute('service mysql restart')
-    
-            utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "DROP DATABASE nova;"''', None,None,False)
-            utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "CREATE DATABASE nova;"''')
-            utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
-            utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
-
-            utils.execute('mount /dev/cdrom /cdrom',None,None,False)
-            utils.execute('apt-get install -y rabbitmq-server')
+            self._controllerConfig.install(controller)
 
             
         # Add the rest of the components here...

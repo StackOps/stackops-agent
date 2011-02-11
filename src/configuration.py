@@ -293,13 +293,13 @@ class ControllerConfig(Config):
         # create the database        
         utils.execute('/var/lib/nova/bin/nova-manage db sync')
         # create an admin user called 'admin'
-        utils.execute('/var/lib/nova/nova-manage user admin admin admin admin')
+        utils.execute('/var/lib/nova/bin/nova-manage user admin admin admin admin')
         # create a project called 'admin' with project manager of 'admin'
-        utils.execute('/var/lib/nova/nova-manage project create admin admin')
+        utils.execute('/var/lib/nova/bin/nova-manage project create admin admin')
         # export environment variables for project 'admin' and user 'admin'
-        utils.execute('/var/lib/nova/nova-manage project env admin admin /root/creds/novarc')
+        utils.execute('/var/lib/nova/bin/nova-manage project env admin admin /root/creds/novarc')
         # create a small network
-        utils.execute('/var/lib/nova/nova-manage network create 10.0.0.0/8 1 32')
+        utils.execute('/var/lib/nova/bin/nova-manage network create 10.0.0.0/8 1 32')
 
         return
 

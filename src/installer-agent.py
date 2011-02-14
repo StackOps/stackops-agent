@@ -17,9 +17,9 @@ target = "installer.stackops.org"
 port = 8888
 
 def terminate():
-        time.sleep(10)
-        log.msg("Terminating install agent... good bye!")
-	os._exit(os.EX_OK)
+    time.sleep(10)
+    log.msg("Terminating install agent... good bye!")
+    os._exit(os.EX_OK)
 
 #main server resource
 class Root(resource.Resource):
@@ -126,8 +126,8 @@ if __name__ == '__main__':
         port = int(sys.argv[1])
         target = sys.argv[2]
     root = Root()
+    #add the views to the web service
     for viewName, className in VIEWS.items():
-        #add the view to the web service
         root.putChild(viewName, className)
     log.startLogging(sys.stdout)
     log.msg('Starting server: %s' %str(datetime.now()))

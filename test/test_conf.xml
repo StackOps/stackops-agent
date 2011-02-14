@@ -34,7 +34,7 @@
 		    <service type="verbose"/>
 		    <service type="nodaemon"/>
 		    <service type="dhcpbridge">
-		        <property name="process" value="/var/lib/nova/bin/nova-dhcpbrige"/>
+		        <property name="process" value="/var/lib/nova/bin/nova-dhcpbridge"/>
 		        <property name="file" value="/etc/nova/nova-controller.conf"/>
 		    </service>
 		    <service type="sql_connection">
@@ -51,7 +51,7 @@
 		        <property name="ip" value="192.168.10.11"/>
 		    </service>
 		    <service type="authentication">
-		        <property name="driver" value="nova.auth.DbDriver"/>
+		        <property name="driver" value="nova.auth.dbdriver.DbDriver"/>
 		    </service>
 		    <service type="libvirt">
 		        <property name="type" value="qemu"/>

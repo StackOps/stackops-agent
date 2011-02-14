@@ -60,7 +60,9 @@ class Root(resource.Resource):
             strio.seek(0)
             xml = StackOpssubs.parse(strio)
             self._configurator.importConfiguration(xml)
-	    t = threading.Thread(target=terminate)
+	    #disable the upstart script
+	    os.rename('/etc/init/stackops.conf','/etc/init/stackops.conf.disabled')
+            t = threading.Thread(target=terminate)
             t.start()
             return 'Installer agent will terminate in 10 seconds...'
         except:

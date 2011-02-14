@@ -9,7 +9,8 @@ cd build
 cp -fR ../scripts/* .
 cp -fR ../src/*.py var/lib/stackops/
 
-tar cvfz ../dist/stackops-agent.tgz *
+tar cvf ../dist/stackops-agent.tar *
+gzip ../dist/stackops-agent.tar
 cd ..
 
 rm -fR build

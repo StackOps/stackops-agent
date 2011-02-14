@@ -1,5 +1,8 @@
 import sys, json
 import StringIO
+import threading
+import time
+import os
 from twisted.internet import reactor
 from twisted.web import server, resource
 from twisted.web.static import File
@@ -11,6 +14,12 @@ import StackOpssubs
 import configuration
 
 target = "installer.stackops.org"
+port = 8888
+
+def terminate():
+        time.sleep(10)
+        log.msg("Terminating install agent... good bye!")
+	os._exit(os.EX_OK)
 
 #main server resource
 class Root(resource.Resource):
@@ -51,7 +60,9 @@ class Root(resource.Resource):
             strio.seek(0)
             xml = StackOpssubs.parse(strio)
             self._configurator.importConfiguration(xml)
-            return 'OK!'
+	    t = threading.Thread(target=terminate)
+            t.start()
+            return 'Installer agent will terminate in 10 seconds...'
         except:
             er=log.err()
             request.setResponseCode(500)
@@ -108,10 +119,7 @@ VIEWS = {
 }
 
 if __name__ == '__main__':
-    
     s = len(sys.argv)
-    print s
-    port = 8000
     if (s==3) :
         port = int(sys.argv[1])
         target = sys.argv[2]

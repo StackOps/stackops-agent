@@ -3,7 +3,7 @@
 rm -fR dist
 mkdir dist
 rm -fR build
-mkdir -p build/var/lib/stackops
+mkdir build
 cd build
 
 cp -fR ../scripts/* .

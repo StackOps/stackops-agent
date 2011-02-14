@@ -285,7 +285,7 @@ class ControllerConfig(Config):
         utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
 
         utils.execute('mount /dev/cdrom /cdrom',None,None,False)
-        utils.execute('apt-get install -y rabbitmq-server')
+        utils.execute('DEBIAN_FRONTEND=noninteractive apt-get install -y rabbitmq-server')
         
         utils.execute('killall dnsmasq',None,None,False)
         utils.execute('rm -fr /root/creds')

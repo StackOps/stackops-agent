@@ -274,7 +274,7 @@ class ControllerConfig(Config):
         utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
 
         utils.execute('mount /dev/cdrom /cdrom',None,None,False)
-        utils.execute('apt-get install -y mysql-server python-mysqldb')
+        utils.execute('apt-get install -y mysql-server')
 
         utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
         utils.execute('service mysql restart')

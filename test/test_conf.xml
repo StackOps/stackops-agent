@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <node>
     <hardware>
         <cpus>
@@ -9,79 +8,67 @@
         <memory>4154249216</memory>
         <nics>
             <nic interface="eth0" type="" name="NetLink BCM5906M Fast Ethernet PCI Express"/>
+            <nic interface="br0" type="" name=""/>
             <nic interface="wlan0" type="" name="PRO/Wireless 3945ABG [Golan] Network Connection"/>
+            <nic interface="virbr0" type="" name=""/>
         </nics>
         <partitions>
-            <partition device="/dev/sda1" mountpoint="/" used="11385692160" size="113303699456"/>
+            <partition device="/dev/sda1" mountpoint="/" used="25612419072" size="113303699456"/>
             <partition device="proc" mountpoint="/proc" used="0" size="0"/>
             <partition device="binfmt_misc" mountpoint="/proc/sys/fs/binfmt_misc" used="0" size="0"/>
+            <partition device="192.168.10.2:/mnt" mountpoint="/media/kurobox" used="675622428672" size="735971958784"/>
             <partition device="gvfs-fuse-daemon" mountpoint="/home/stackops/.gvfs" used="0" size="0"/>
-            <partition device="192.168.10.2:/mnt" mountpoint="/media/kurobox" used="684495355904" size="735971958784"/>
         </partitions>
     </hardware>
     <software>
-        <os uname="Linux/stackops-dev/2.6.32-27-generic/#49-Ubuntu SMP Thu Dec 2 00:51:09 UTC 2010/x86_64/">
+        <os uname="Linux/stackops-dev/2.6.32-28-generic/#55-Ubuntu SMP Mon Jan 10 23:42:43 UTC 2011/x86_64/">
             <network hostname="stackops-dev">
                 <nameserver>8.8.4.4</nameserver>
                 <nameserver>8.8.8.8</nameserver>
                 <nameserver>4.4.4.4</nameserver>
-                <iface name="eth0" default="false" virtual="false" netmask="none" address="none" dhcp="false" gateway="none"/>
+                <iface name="eth0" default="false" virtual="false" netmask="255.255.255.0" address="192.168.10.29" dhcp="false" gateway="192.168.10.1"/>
+                <iface name="br0" default="false" virtual="true" netmask="255.255.255.0" address="192.168.10.30" dhcp="false" gateway="192.168.10.1"/>
             </network>
         </os>
     </software>
     <cloud>
-		<component name="controller">
-		    <service type="verbose"/>
-		    <service type="nodaemon"/>
-		    <service type="dhcpbridge">
-		        <property name="process" value="/var/lib/nova/bin/nova-dhcpbridge"/>
-		        <property name="file" value="/etc/nova/nova-controller.conf"/>
-		    </service>
-		    <service type="sql_connection">
-		        <property name="username" value="root"/>
-		        <property name="password" value="nova"/>
-		        <property name="host" value="mysql_host"/>
-		        <property name="port" value="3306"/>
-		        <property name="schema" value="nova"/>
-		    </service>
-		    <service type="cc_host">
-		        <property name="hostname" value="controller_host"/>
-		    </service>
-		    <service type="routing_source">
-		        <property name="ip" value="192.168.10.11"/>
-		    </service>
-		    <service type="authentication">
-		        <property name="driver" value="nova.auth.dbdriver.DbDriver"/>
-		    </service>
-		    <service type="libvirt">
-		        <property name="type" value="qemu"/>
-		    </service>
-		    <service type="logs">
-		        <property name="dir" value="/var/log/nova"/>
-		    </service>
-		    <service type="state">
-		        <property name="path" value="/var/lib/nova"/>
-		    </service>
-		    <service type="s3_host">
-		        <property name="hostname" value="s3_host"/>
-		    </service>
-		    <service type="rabbit_host">
-		        <property name="hostname" value="rabbitmq_host"/>
-		    </service>
-		    <service type="ec2_url">
-		        <property name="host" value="ec2_host"/>
-		        <property name="port" value="8773"/>
-		        <property name="uri" value="/services/Cloud"/>
-		    </service>
-		    <service type="network_manager">
-		        <property name="type" value="nova.network.manager.VlanManager"/>
-		        <property name="fixed_range" value="192.168.0.0/12"/>
-		        <property name="network_size" value="5000"/>
-		        <property name="flat_interface" value=""/>
-		    </service>
-		    <service type="FAKE_subdomain">
-		        <property name="value" value="ec2"/>
-		    </service>
-		</component>
+        <component name="controller">
+            <service type="generic">
+                <property name="verbose" value="true"/>
+                <property name="nodaemon" value="true"/>
+            </service>
+            <service type="database">
+                <property name="username" value="root"/>
+                <property name="password" value="novatest"/>
+                <property name="host" value="localhost"/>
+                <property name="port" value="3306"/>
+                <property name="schema" value="nova"/>
+            </service>
+            <service type="authentication">
+                <property name="driver" value="nova.auth.dbdriver.DbDriver"/>
+            </service>
+            <service type="logs">
+                <property name="dir" value="/var/log/nova"/>
+            </service>
+            <service type="state">
+                <property name="path" value="/var/lib/nova"/>
+            </service>
+            <service type="s3">
+                <property name="hostname" value="192.168.10.31"/>
+                <property name="dmz" value="192.168.10.31"/>
+            </service>
+            <service type="rabbitmq">
+                <property name="hostname" value="192.168.10.31"/>
+            </service>
+            <service type="ec2">
+                <property name="hostname" value="192.168.10.31"/>
+                <property name="dmz" value="192.168.10.31"/>
+            </service>
+            <service type="network">
+                <property name="type" value="nova.network.manager.VlanManager"/>
+                <property name="fixed_range" value="192.168.0.0/12"/>
+                <property name="network_size" value="5000"/>
+            </service>
+        </component>
     </cloud>
 </node>

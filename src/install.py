@@ -113,7 +113,7 @@ class OperatingSystem(object):
     def getNetworkConfiguration(self):
         machine = Machine()
         inf = []        
-        mnt = commands.getstatusoutput("cat /etc/network/interfaces")
+        mnt = commands.getstatusoutput('cat /etc/network/interfaces | egrep -v "^s*(#|$)"')
 #        mnt = commands.getstatusoutput("cat interfaces")
         if (mnt[0]>0):
             raise Exception(mnt[1])
@@ -121,32 +121,29 @@ class OperatingSystem(object):
         for devnet in devnets:
             net = devnet.split('\n')
             dev = {}
-            for e in net:
-                element = e.strip()
-                if (element in machine.getIfaceList()):
-                    params = element.split(' ')
-#                    if (params[0] == 'iface'):
-#                        dev['interface'] = params[1]
-                    dev['name'] = element
-                    dev['dhcp'] = "true"
-                    if (element.endswith('dhcp')):
+            element = net[0].strip()
+            if (element in machine.getIfaceList()):
+                dev['name'] = element
+                dev['dhcp'] = "true"
+                dev['address'] = "none"                         
+                dev['netmask'] = "none"                         
+                dev['gateway'] = "none"
+                dev['default'] = "false"
+                dev['virtual'] = "false"                                             
+                for e in net:
+                    params = e.strip().split(' ')
+                    if (params[len(params)-1] == 'dhcp'):
                         dev['dhcp'] = "true"
-                    if (element.endswith('static')):
+                    if (params[len(params)-1] == 'static'):
                         dev['dhcp'] = "false" 
                     if (params[0] == 'address'):
                         dev['address'] =  params[1]
-                    else:
-                        dev['address'] = "none"                         
                     if (params[0] == 'netmask'):
                         dev['netmask'] =  params[1]
-                    else:
-                        dev['netmask'] = "none"                         
                     if (params[0] == 'gateway'):
                         dev['gateway'] =  params[1]                    
-                    else:
-                        dev['gateway'] = "none"
-                    dev['default'] = "false"
-                    dev['virtual'] = "false"                                             
+                    if (params[0] == 'bridge_ports'):
+                        dev['virtual'] = "true"
             if (len(dev)>0):
                 inf.append(dev)
         return inf
@@ -254,7 +251,7 @@ class Filler(object):
 
     def populateSqlConnection(self, username, password, hostname, port, schema):
         sql_connection = StackOps.service()
-        sql_connection.set_type('sql_connection')
+        sql_connection.set_type('database')
         mysql_username = StackOps.property()
         mysql_username.set_name('username')
         mysql_username.set_value(username)
@@ -277,18 +274,23 @@ class Filler(object):
         sql_connection.add_property(mysql_schema)
         return sql_connection
 
-    def populateS3Host(self, controller_host):
+    def populateS3(self, hostname, dmz):
         s3_host = StackOps.service()
-        s3_host.set_type('s3_host')
+        s3_host.set_type('s3')
         host = StackOps.property()
         host.set_name('hostname')
-        host.set_value(controller_host)
+        host.set_value(hostname)
         s3_host.add_property(host)
+
+        d = StackOps.property()
+        d.set_name('dmz')
+        d.set_value(dmz)
+        s3_host.add_property(d)
         return s3_host
 
     def populateMomHost(self, controller_host):
         mom_host = StackOps.service()
-        mom_host.set_type('rabbit_host')
+        mom_host.set_type('rabbitmq')
         host = StackOps.property()
         host.set_name('hostname')
         host.set_value(controller_host)
@@ -375,36 +377,45 @@ class Filler(object):
         cc_host.add_property(host)
         return cc_host
 
-    def populateVerbose(self):
-        verbose = StackOps.service()
-        verbose.set_type('verbose')
-        return verbose
+    def populateGeneric(self,verbose_value,nodaemon_value):
+        generic = StackOps.service()
+        generic.set_type('generic')
+        
+        verbose = StackOps.property()
+        verbose.set_name('verbose')
+        verbose.set_value(verbose_value)
+        generic.add_property(verbose)
+        
+        nodaemon = StackOps.property()
+        nodaemon.set_name('nodaemon')
+        nodaemon.set_value(nodaemon_value)
+        generic.add_property(nodaemon)
+        return generic
 
     def populateNodaemon(self):
         verbose = StackOps.service()
         verbose.set_type('nodaemon')
         return verbose
 
-    def populateEc2Url(self, hostname, port, uri):
+    def populateEc2(self, hostname, hostname_dmz):
         ec2url = StackOps.service()
-        ec2url.set_type('ec2_url')
+        ec2url.set_type('ec2')
+
         ec2url_host = StackOps.property()
-        ec2url_host.set_name('host')
+        ec2url_host.set_name('hostname')
         ec2url_host.set_value(hostname)
         ec2url.add_property(ec2url_host)
-        ec2url_port = StackOps.property()
-        ec2url_port.set_name('port')
-        ec2url_port.set_value(port)
-        ec2url.add_property(ec2url_port)
-        ec2url_uri = StackOps.property()
-        ec2url_uri.set_name('uri')
-        ec2url_uri.set_value(uri)
-        ec2url.add_property(ec2url_uri)
+
+        ec2url_dmz = StackOps.property()
+        ec2url_dmz.set_name('dmz')
+        ec2url_dmz.set_value(hostname_dmz)
+        ec2url.add_property(ec2url_dmz)
+        
         return ec2url
     
-    def populateNetworkManager(self,type,fixed_range,network_size,flat_interface):
+    def populateNetworkManager(self,type,fixed_range,network_size):
         network = StackOps.service()
-        network.set_type('network_manager')
+        network.set_type('network')
 
         type_network = StackOps.property()
         type_network.set_name('type')
@@ -421,68 +432,56 @@ class Filler(object):
         network_size_network.set_value(network_size)
         network.add_property(network_size_network)
 
-        flat_interface_network = StackOps.property()
-        flat_interface_network.set_name('flat_interface')
-        flat_interface_network.set_value(flat_interface)
-        network.add_property(flat_interface_network)
+#        flat_interface_network = StackOps.property()
+#        flat_interface_network.set_name('flat_interface')
+#        flat_interface_network.set_value(flat_interface)
+#        network.add_property(flat_interface_network)
         
         return network
 
     def populateController(self, 
                            verbose,
                            nodaemon,
-                           dhcpbridge_flagfile,
-                           dhcpbridge,
                            mysql_username, 
                            mysql_password, 
                            mysql_hostname, 
                            mysql_port, 
                            mysql_schema, 
-                           controller_host,
-                           routing_source_ip,
                            auth_driver,
-                           libvirt_type,
                            logdir,
                            state_path,
                            s3_host,
+                           s3_dmz,
                            rabbit_host,
-                           ec2_url_host, 
-                           ec2_url_port, 
-                           ec2_url_uri,
+                           ec2_host, 
+                           ec2_dmz_host, 
                            network_manager,
                            network_fixed_range,
-                           network_size,
-                           flat_interface,
-                           FAKE_subdomain):
+                           network_size):
         
         controller = StackOps.component()
         controller.set_name('controller')
+
+        generic = self.populateGeneric(verbose,nodaemon)
+        controller.add_service(generic)
         
-        if (verbose):
-            v = self.populateVerbose()
-            controller.add_service(v)
-
-        if (nodaemon):        
-            nd = self.populateNodaemon()
-            controller.add_service(nd)
-
-        db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
-        controller.add_service(db)
+#        db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
+#        controller.add_service(db)
 
         sql_connection = self.populateSqlConnection(mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema)
         controller.add_service(sql_connection)
         
-        cc_host = self.populateControllerHost(controller_host)
-        controller.add_service(cc_host)
+#        cc_host = self.populateControllerHost(controller_host)
+#        controller.add_service(cc_host)
 
-        rsip = self.populateRoutingSource(routing_source_ip)
-        controller.add_service(rsip)
+#        rsip = self.populateRoutingSource(routing_source_ip)
+#        controller.add_service(rsip)
 
         auth = self.populateAuthentication(auth_driver)
         controller.add_service(auth)
 
-        libvirt = self.populateLibvirt(libvirt_type)
-        controller.add_service(libvirt)
+#        libvirt = self.populateLibvirt(libvirt_type)
+#        controller.add_service(libvirt)
 
         logs = self.populateLogs(logdir)
         controller.add_service(logs)
@@ -490,20 +489,20 @@ class Filler(object):
         state = self.populateState(state_path)
         controller.add_service(state)
 
-        s3 = self.populateS3Host(s3_host)
+        s3 = self.populateS3(s3_host, s3_dmz)
         controller.add_service(s3)
 
         mom = self.populateMomHost(rabbit_host)
         controller.add_service(mom)
 
-        ec2= self.populateEc2Url(ec2_url_host,ec2_url_port,ec2_url_uri)
+        ec2= self.populateEc2(ec2_host,ec2_dmz_host)
         controller.add_service(ec2)
 
-        network_manager = self.populateNetworkManager(network_manager,network_fixed_range,network_size,flat_interface)
+        network_manager = self.populateNetworkManager(network_manager,network_fixed_range,network_size)
         controller.add_service(network_manager)
 
-        fakesubdomain = self.populateFakeSubdomain(FAKE_subdomain)
-        controller.add_service(fakesubdomain)
+#        fakesubdomain = self.populateFakeSubdomain(FAKE_subdomain)
+#        controller.add_service(fakesubdomain)
 
         return controller
         

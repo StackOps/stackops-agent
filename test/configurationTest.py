@@ -1,5 +1,5 @@
 import unittest
-
+import sys
 import configuration
 import StackOps
 
@@ -9,7 +9,7 @@ from install import Filler
 class ConfiguratorTest(unittest.TestCase):
 
 
-    _filler = Filler.Filler()
+    _filler = Filler()
     
     def setUp(self):
         pass
@@ -25,10 +25,11 @@ class ConfiguratorTest(unittest.TestCase):
         pass
 
     def testImportConfiguration(self):
-        controller = self._filler.populateController('root', 'novatest', 'localhost', '3306', 'nova', '192.168.10.10', '8773','/services/Cloud','nova.network.manager.VlanManager','192.168.0.0/12','5000')
+        controller = self._filler.populateController('true','true', 'root', 'novatest', 'localhost', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000')
         cloud = StackOps.cloud()
         cloud.add_component(controller)
-        node = self._filler.createNode(controller)
+        node = self._filler.createNode(cloud)
+        node.export(sys.stdout,0)
         c = configuration.Configurator()
         c.importConfiguration(node)
         pass
@@ -58,8 +59,8 @@ class ControllerConfigTest(unittest.TestCase):
 
     def testWrite(self):
         c = configuration.ControllerConfig()
-        filler = Filler.Filler()        
-        controller = filler.populateController('root', 'novatest', 'localhost', '3306', 'nova', '192.168.10.10', '8773','/services/Cloud','nova.network.manager.VlanManager','192.168.0.0/12','5000')
+        filler = Filler()        
+        controller = filler.populateController('true','true', 'root', 'novatest', 'localhost', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000')
 
         self.assertFalse(c.write(controller))
 

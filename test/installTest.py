@@ -23,35 +23,28 @@ class Test(unittest.TestCase):
         f = install.Filler()
         node = f.populateController('verbose', 
                                     'nodaemon', 
-                                    '/etc/nova/nova-controller.conf', 
-                                    '/var/lib/nova/bin/nova-dhcpbrige', 
                                     'root', 
                                     'nova', 
                                     'mysql_host', 
                                     '3306', 
                                     'nova', 
-                                    'controller_host', 
-                                    '192.168.10.11', 
-                                    'nova.auth.DbDriver', 
-                                    'qemu', 
+                                    'nova.auth.dbdriver.DbDriver', 
                                     '/var/log/nova', 
                                     '/var/lib/nova', 
                                     's3_host', 
+                                    's3_host_dmz', 
                                     'rabbitmq_host', 
                                     'ec2_host', 
-                                    '8773',
-                                    '/services/Cloud',
+                                    'ec2_dmz_host', 
                                     'nova.network.manager.VlanManager',
                                     '192.168.0.0/12',
-                                    '5000', 
-                                    '', 
-                                    'ec2')
+                                    '5000')
         node.export(sys.stdout,0)
         pass
 
     def testImportNode(self):
         f = install.Filler()
-        node = f.importNode('test_conf.xml')
+        node = f.importNode('test/test_conf.xml')
         node.export(sys.stdout,0)
         pass
 
@@ -93,7 +86,7 @@ class MachineTest(unittest.TestCase):
         # well, what to do? print it out maybe... 
         for iface in ifaces:
             print iface
-        self.assertTrue()
+        self.assertTrue(len(ifaces)>0)
 
     def testBlockDevicesList(self):
         c = install.Machine() 
@@ -133,24 +126,3 @@ class OperatingSystemTest(unittest.TestCase):
         nameservers = c.getNetworkConfiguration()
         print nameservers
         self.assertNotEqual(0,nameservers)
-
-class PackageTest(unittest.TestCase):
-
-
-    def setUp(self):
-        pass
-
-
-    def tearDown(self):
-        pass
-
-
-    def testName(self):
-        c = install.Package()
-        c.install_common()
-        pass
-
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main()

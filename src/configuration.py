@@ -63,25 +63,21 @@ class ControllerConfig(Config):
     classdocs
     '''
 
-    _parameterList = set(['verbose',
-                          'nodaemon',
-                          'dhcpbridge',
-                          'dhcpbridge_flagfile',
-                          'network_manager'
-                          'cc_host', 
-                          'routing_source_ip', 
-                          'sql_connection',
-                          'auth_driver',
-                          'libvirt_type',
-                          'logdir',
-                          'state_path', 
-                          's3_host', 
+    _parameterList = set(['network_size', 
+                          'verbose', 
                           'rabbit_host', 
-                          'ec2_url', 
                           'fixed_range', 
-                          'network_size',
-                          'FAKE_subdomain',
-                          'flat_interface'])
+                          'sql_connection', 
+                          'ec2_dmz_host', 
+                          'state_path', 
+                          'auth_driver', 
+                          'network_manager', 
+                          'ec2_host', 
+                          's3_dmz', 
+                          'logdir', 
+                          's3_host', 
+                          'nodaemon'])
+
     _filename = "nova-controller.conf"
 
     def __init__(self):
@@ -134,23 +130,15 @@ class ControllerConfig(Config):
             verbose = parameters['verbose']
             nodaemon = parameters['nodaemon']
             
-            # dhcpbridge config
-            dhcpbridge_flagfile = parameters['dhcpbridge_flagfile']
-            dhcpbridge = parameters['dhcpbridge']
+            # Authentication driver
+            auth_driver = parameters['auth_driver']
+    
+            # log directory
+            logdir = parameters['logdir']
 
-            # network configuration
-            network_manager = parameters['network_manager']        
-            network_fixed_range = parameters['fixed_range']
-            network_size = parameters['network_size']
-            flat_interface = parameters['flat_interface']
-            
-            # All the hostnames must be equal to cc_host (Controller host)
-            # Cloud Controller host
-            controller_host = parameters['cc_host']
+            # state directory type
+            state_path = parameters['state_path']
 
-            # Routing source IP
-            routing_source_ip = parameters['routing_source_ip']
-            
             # mysql database
             conn_params = self._parseConnectionString(parameters['sql_connection'])
             mysql_username = conn_params['user']
@@ -159,34 +147,45 @@ class ControllerConfig(Config):
             mysql_port = conn_params['port']
             mysql_schema = conn_params['schema']
 
-            # Authentication driver
-            auth_driver = parameters['auth_driver']
-    
-            # libvirt virtualization type
-            libvirt_type = parameters['libvirt_type']
-
-            # log directory
-            logdir = parameters['logdir']
-
-            # state directory type
-            state_path = parameters['state_path']
-
             # S3 Images service host
             s3_host = parameters['s3_host']
+            s3_dmz = parameters['s3_dmz']
 
             # RabbitMQ broker host
             rabbit_host = parameters['rabbit_host']
 
             # EC2 API Listen port
-            ec2_url = self._parseEc2Url(parameters['ec2_url'])
-            ec2_url_host = ec2_url['host']
-            ec2_url_port = ec2_url['port']
-            ec2_url_uri = ec2_url['uri']
+            ec2_host = parameters['ec2_host']
+            ec2_dmz_host = parameters['ec2_dmz_host']
+
+            # NETWORK-NODE SPECIFIC
+            # dhcpbridge config
+#            dhcpbridge_flagfile = parameters['dhcpbridge_flagfile']
+#            dhcpbridge = parameters['dhcpbridge']
+
+            # Routing source IP
+#            routing_source_ip = parameters['routing_source_ip']
+            
+            # network configuration
+            network_manager = parameters['network_manager']        
+            network_fixed_range = parameters['fixed_range']
+            network_size = parameters['network_size']
+#            flat_interface = parameters['flat_interface']
+            
+            # All the hostnames must be equal to cc_host (Controller host)
+            # Cloud Controller host
+            # DEPRECATED
+#            controller_host = parameters['cc_host']
+
+            # COMPUTE-NODE SPECIFIC
+            # libvirt virtualization type
+#            libvirt_type = parameters['libvirt_type']
     
             # Force EC2 API simulation
-            FAKE_subdomain = parameters['FAKE_subdomain']
+            # DEPRECATED
+            #FAKE_subdomain = parameters['FAKE_subdomain']
 
-            controller = self._filler.populateController(verbose, nodaemon, dhcpbridge_flagfile, dhcpbridge, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, controller_host, routing_source_ip, auth_driver, libvirt_type, logdir, state_path, s3_host, rabbit_host, ec2_url_host, ec2_url_port, ec2_url_uri, network_manager, network_fixed_range, network_size, flat_interface, FAKE_subdomain)
+            controller = self._filler.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size)
         else:
             # No file or configuration, create default XML configuration
             print "No data in config file!"
@@ -198,72 +197,81 @@ class ControllerConfig(Config):
     def write(self,xmldoc):
         controller = xmldoc
         
-        verbose = self._filler.getPropertyValue(controller, 'verbose', 'enabled')
-        nodaemon = self._filler.getPropertyValue(controller, 'verbose', 'enabled')
+        verbose = self._filler.getPropertyValue(controller, 'generic', 'verbose')
+        nodaemon = self._filler.getPropertyValue(controller, 'generic', 'nodaemon')
 
-        dhcpbridge = self._filler.getPropertyValue(controller, 'dhcpbridge', 'process')
-        dhcpbridge_flagfile = self._filler.getPropertyValue(controller, 'dhcpbridge', 'file')
+# NOVA-NETWORK SPECIFIC
+#        dhcpbridge = self._filler.getPropertyValue(controller, 'dhcpbridge', 'process')
+#        dhcpbridge_flagfile = self._filler.getPropertyValue(controller, 'dhcpbridge', 'file')
 
-        network_manager = self._filler.getPropertyValue(controller,'network_manager','type')
-        fixed_range = self._filler.getPropertyValue(controller,'network_manager','fixed_range')
-        network_size = self._filler.getPropertyValue(controller,'network_manager','network_size')
-        flat_interface = self._filler.getPropertyValue(controller,'network_manager','flat_interface')
+        network_manager = self._filler.getPropertyValue(controller,'network','type')
+        fixed_range = self._filler.getPropertyValue(controller,'network','fixed_range')
+        network_size = self._filler.getPropertyValue(controller,'network','network_size')
+#        flat_interface = self._filler.getPropertyValue(controller,'network_manager','flat_interface')
 
-        cc_host = self._filler.getPropertyValue(controller, 'cc_host', 'hostname')
+# DEPRECATED
+#        cc_host = self._filler.getPropertyValue(controller, 'cc_host', 'hostname')
         
-        routing_source_ip = self._filler.getPropertyValue(controller, 'routing_source', 'ip')
+# NOVA-NETWORK SPECIFIC
+#        routing_source_ip = self._filler.getPropertyValue(controller, 'routing_source', 'ip')
 
-        mysql_username = self._filler.getPropertyValue(controller, 'sql_connection', 'username')
-        mysql_password = self._filler.getPropertyValue(controller, 'sql_connection', 'password')
-        mysql_host = self._filler.getPropertyValue(controller, 'sql_connection', 'host')
-        mysql_port = self._filler.getPropertyValue(controller, 'sql_connection', 'port')
-        mysql_schema = self._filler.getPropertyValue(controller, 'sql_connection', 'schema')
+        mysql_username = self._filler.getPropertyValue(controller, 'database', 'username')
+        mysql_password = self._filler.getPropertyValue(controller, 'database', 'password')
+        mysql_host = self._filler.getPropertyValue(controller, 'database', 'host')
+        mysql_port = self._filler.getPropertyValue(controller, 'database', 'port')
+        mysql_schema = self._filler.getPropertyValue(controller, 'database', 'schema')
         sql_connection = 'mysql://' + mysql_username + ':' + mysql_password + '@' + mysql_host + ':' + mysql_port + '/' + mysql_schema
 
         auth_driver = self._filler.getPropertyValue(controller, 'authentication', 'driver')
 
-        libvirt_type = self._filler.getPropertyValue(controller, 'libvirt', 'type')
+# NOVA-COMPUTE
+#        libvirt_type = self._filler.getPropertyValue(controller, 'libvirt', 'type')
 
         logdir = self._filler.getPropertyValue(controller, 'logs', 'dir')
         state_path = self._filler.getPropertyValue(controller, 'state', 'path')
 
-        s3_host = self._filler.getPropertyValue(controller, 's3_host', 'hostname')
+        s3_host = self._filler.getPropertyValue(controller, 's3', 'hostname')
+        s3_dmz = self._filler.getPropertyValue(controller, 's3', 'dmz')
         
-        rabbit_host = self._filler.getPropertyValue(controller, 'rabbit_host', 'hostname')
+        rabbit_host = self._filler.getPropertyValue(controller, 'rabbitmq', 'hostname')
 
-        ec2url_host = self._filler.getPropertyValue(controller, 'ec2_url', 'host')
-        ec2url_port = self._filler.getPropertyValue(controller, 'ec2_url', 'port')
-        ec2url_uri = self._filler.getPropertyValue(controller, 'ec2_url', 'uri')
-        ec2_url = 'http://' + ec2url_host + ':' + ec2url_port + ec2url_uri
+        ec2_hostname = self._filler.getPropertyValue(controller, 'ec2', 'hostname')
+        ec2_dmz = self._filler.getPropertyValue(controller, 'ec2', 'dmz')
 
-        fake_subdomain = self._filler.getPropertyValue(controller, 'FAKE_subdomain', 'value')
+# DEPRECATED
+#        fake_subdomain = self._filler.getPropertyValue(controller, 'FAKE_subdomain', 'value')
 
 
         parameters = {'verbose':verbose, 
                       'nodaemon':nodaemon,
-                      'dhcpbridge':dhcpbridge,
-                      'dhcpbridge_flagfile':dhcpbridge_flagfile, 
+# NOVA-NETWORK SPECIFIC
+#                      'dhcpbridge':dhcpbridge,
+#                      'dhcpbridge_flagfile':dhcpbridge_flagfile, 
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
                       'network_size':network_size,
-                      'flat_interface':flat_interface,                      
-                      'cc_host':cc_host, 
-                      'routing_source_ip':routing_source_ip, 
+#                      'flat_interface':flat_interface,                      
+# DEPRECATED
+#                      'cc_host':cc_host, 
+# NOVA-NETWORK SPECIFIC
+#                     'routing_source_ip':routing_source_ip, 
                       'sql_connection':sql_connection, 
                       'auth_driver':auth_driver, 
-                      'libvirt_type':libvirt_type, 
+# NOVA-COMPUTE SPECIFIC
+#                      'libvirt_type':libvirt_type, 
                       'logdir':logdir, 
                       'state_path':state_path,                       
                       's3_host':s3_host, 
+                      's3_dmz':s3_dmz, 
                       'rabbit_host':rabbit_host, 
-                      'ec2_url':ec2_url,
-                      'FAKE_subdomain':fake_subdomain}
+                      'ec2_host':ec2_hostname,
+                      'ec2_dmz_host':ec2_dmz}
         
         self._writeFile(self._filename,parameters)
         return
 
     def install(self,xmldoc):
-        mysql_pass = self._filler.getPropertyValue(xmldoc, 'sql_connection', 'password')
+        mysql_pass = self._filler.getPropertyValue(xmldoc, 'database', 'password')
 
         # now let's start with the hard part
         utils.execute('apt-cdrom add',None,None,False)

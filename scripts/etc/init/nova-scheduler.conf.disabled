@@ -1,13 +1,13 @@
-# nova-objectstore service
+# nova-scheduler service
 
-description     "nova-objectstore"
+description     "nova-scheduler"
 author          "Diego Parrilla <diego.parrilla@stackops.com>"
 
-start on (net-device-up IFACE!=lo and local-filesystems and started mysql and stopped stackops)
+start on (net-device-up IFACE!=lo and local-filesystems and started mysql)
 stop on runlevel [016]
 
 env NOVA_DIR=/var/lib/nova/bin
-env NOVA_APP=nova-objectstore
+env NOVA_APP=nova-scheduler
 env NOVA_CONF=/etc/nova/nova-controller.conf
 env NOVA_LOG=/var/log/nova
 

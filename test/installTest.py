@@ -1,5 +1,6 @@
 import unittest
 import sys
+import os
 
 import install
 
@@ -44,7 +45,7 @@ class Test(unittest.TestCase):
 
     def testImportNode(self):
         f = install.Filler()
-        node = f.importNode('test/test_conf.xml')
+        node = f.importNode('test_conf.xml')
         node.export(sys.stdout,0)
         pass
 
@@ -91,6 +92,15 @@ class MachineTest(unittest.TestCase):
     def testBlockDevicesList(self):
         c = install.Machine() 
         self.assertTrue(len(c.getBlockDeviceList())>0)
+
+    def testVirtualization(self):
+        iface =  os.popen2("egrep '(vmx|svm)' /proc/cpuinfo")[1].read()
+        v = "False"
+        if len(iface)>0:
+            v =  "True"
+        c = install.Machine() 
+        self.assertTrue(v == c.getVirtualization())
+      
 
 class OperatingSystemTest(unittest.TestCase):
 

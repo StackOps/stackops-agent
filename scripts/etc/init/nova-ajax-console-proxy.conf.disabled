@@ -1,14 +1,14 @@
-# nova-compute service
+# nova-ajax-console-proxy service
 
-description     "nova-compute"
+description     "nova-ajax-console-proxy"
 author          "Diego Parrilla <diego.parrilla@stackops.com>"
 
-start on (net-device-up IFACE!=lo and local-filesystems and stopped stackops)
+start on (net-device-up IFACE!=lo and local-filesystems and started mysql)
 stop on runlevel [016]
 
 env NOVA_DIR=/var/lib/nova/bin
-env NOVA_APP=nova-compute
-env NOVA_CONF=/etc/nova/nova-compute.conf
+env NOVA_APP=nova-ajax-console-proxy
+env NOVA_CONF=/etc/nova/nova-controller.conf
 env NOVA_LOG=/var/log/nova
 
 chdir /var/lib/nova

@@ -13,13 +13,23 @@ import StackOpssubs
 
 import configuration
 
+import utils
+
 target = "installer.stackops.org"
 port = 8888
 
 def terminate():
     time.sleep(10)
     log.msg("Terminating install agent... good bye!")
-    os._exit(os.EX_OK)
+    utils.execute('stop stackops')
+    log.msg("You should not read this message after stopping the process!")
+
+def importConfiguration(configurator, str):
+    strio = StringIO.StringIO()
+    strio.write(str)
+    strio.seek(0)
+    xml = StackOpssubs.parse(strio)
+    configurator.importConfiguration(xml)
 
 #main server resource
 class Root(resource.Resource):
@@ -37,7 +47,7 @@ class Root(resource.Resource):
         str = str + '<body>'
         str = str + '<h1>Redirecting to StackOps Assistant...</h1>'
         str = str + '<div style="display:none">'
-        str = str + '<form name="autoform" id="autoform" action="http://' +  target +'/stackops/install/wizard" method="post" >'
+        str = str + '<form name="autoform" id="autoform" action="http://' +  target +'/stackops/install/entrypoint" method="post" >'
         str = str + '<textarea name="xml" id="xml">'
         str = str + output.getvalue()
         str = str + '</textarea>'
@@ -55,15 +65,8 @@ class Root(resource.Resource):
         try:
             str = request.args["sysinfo"][0]
             log.msg(str)
-            strio = StringIO.StringIO()
-            strio.write(str)
-            strio.seek(0)
-            xml = StackOpssubs.parse(strio)
-            self._configurator.importConfiguration(xml)
-            os.rename('/etc/init/stackops.conf','/etc/init/stackops.conf.disabled')
-            t = threading.Thread(target=terminate)
-            t.start()
-            return 'Installer agent will terminate in 10 seconds...'
+            importConfiguration(_configurator,str)
+            return 'Done.'
         except:
             er=log.err()
             request.setResponseCode(500)
@@ -98,17 +101,29 @@ class GetConfiguration(resource.Resource):
         try:
             str = request.content.read()
             log.msg(str)
-            strio = StringIO.StringIO()
-            strio.write(str)
-            strio.seek(0)
-            xml = StackOpssubs.parse(strio)
-            self._configurator.importConfiguration(xml)
+            importConfiguration(self._configurator,str)
             return 'OK!'
         except:
             er=log.err()
             request.setResponseCode(500)
             return er
 
+class GetTermination(resource.Resource):
+
+    def render_GET(self, request):
+        try:
+            log.msg('Request: TERMINATION')
+            t = threading.Thread(target=terminate)
+            t.start()
+            return 'Installer agent will terminate in 10 seconds...'
+        except:
+            er = log.err()
+            request.setResponseCode(500)
+            return er
+
+    def render_POST(self, request):
+        self.render_GET(request)
+        
 class PageNotFoundError(resource.Resource):
 
     def render_GET(self, request):
@@ -116,7 +131,8 @@ class PageNotFoundError(resource.Resource):
 
 #to make the process of adding new views less static
 VIEWS = {
-    'configuration': GetConfiguration()
+    'configuration': GetConfiguration(),
+    'termination': GetTermination(),
 }
 
 if __name__ == '__main__':

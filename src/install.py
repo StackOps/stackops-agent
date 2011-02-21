@@ -38,7 +38,7 @@ class Machine:
         return 1024 * int(os.popen2("cat /proc/meminfo | grep 'MemTotal' | sed 's/[^0-9\.]//g'")[1].read())
 
     def getVirtualization(self):
-        iface =  os.popen2("egrep '(vmxx|svmx)' /proc/cpuinfo")[1].read()
+        iface =  os.popen2("egrep '(vmx|svm)' /proc/cpuinfo")[1].read()
         if len(iface)>0:
             return "True"
         else:
@@ -439,6 +439,62 @@ class Filler(object):
         
         return network
 
+    def populateNetworkNode(self, 
+                           verbose,
+                           nodaemon,
+                           mysql_username, 
+                           mysql_password, 
+                           mysql_hostname, 
+                           mysql_port, 
+                           mysql_schema, 
+                           auth_driver,
+                           logdir,
+                           state_path,
+                           s3_host,
+                           s3_dmz,
+                           rabbit_host,
+                           ec2_host, 
+                           ec2_dmz_host, 
+                           network_manager,
+                           network_fixed_range,
+                           network_size,
+                           dhcpbridge_flagfile,
+                           dhcpbridge,
+                           routing_source_ip):
+        network = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size)
+        network.set_name('network')
+        db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
+        network.add_service(db)
+        rsip = self.populateRoutingSource(routing_source_ip)
+        network.add_service(rsip)
+        return network
+
+    def populateCompute(self, 
+                           verbose,
+                           nodaemon,
+                           mysql_username, 
+                           mysql_password, 
+                           mysql_hostname, 
+                           mysql_port, 
+                           mysql_schema, 
+                           auth_driver,
+                           logdir,
+                           state_path,
+                           s3_host,
+                           s3_dmz,
+                           rabbit_host,
+                           ec2_host, 
+                           ec2_dmz_host, 
+                           network_manager,
+                           network_fixed_range,
+                           network_size,
+                           libvirt_type):
+        compute = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size)
+        compute.set_name('compute')
+        libvirt = self.populateLibvirt(libvirt_type)
+        compute.add_service(libvirt)
+        return compute
+
     def populateController(self, 
                            verbose,
                            nodaemon,
@@ -465,23 +521,11 @@ class Filler(object):
         generic = self.populateGeneric(verbose,nodaemon)
         controller.add_service(generic)
         
-#        db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
-#        controller.add_service(db)
-
         sql_connection = self.populateSqlConnection(mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema)
         controller.add_service(sql_connection)
         
-#        cc_host = self.populateControllerHost(controller_host)
-#        controller.add_service(cc_host)
-
-#        rsip = self.populateRoutingSource(routing_source_ip)
-#        controller.add_service(rsip)
-
         auth = self.populateAuthentication(auth_driver)
         controller.add_service(auth)
-
-#        libvirt = self.populateLibvirt(libvirt_type)
-#        controller.add_service(libvirt)
 
         logs = self.populateLogs(logdir)
         controller.add_service(logs)
@@ -500,9 +544,6 @@ class Filler(object):
 
         network_manager = self.populateNetworkManager(network_manager,network_fixed_range,network_size)
         controller.add_service(network_manager)
-
-#        fakesubdomain = self.populateFakeSubdomain(FAKE_subdomain)
-#        controller.add_service(fakesubdomain)
 
         return controller
         

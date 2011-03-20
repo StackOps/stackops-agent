@@ -44,7 +44,7 @@ class ConfiguratorTest(unittest.TestCase):
         pass
 
     def testImportConfiguration(self):
-        controller = self._filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000')
+        controller = self._filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true')
         cloud = StackOps.cloud()
         cloud.add_component(controller)
         node = self._filler.createNode(cloud)
@@ -67,7 +67,7 @@ class ControllerConfigTest(unittest.TestCase):
     def testWrite(self):
         c = configuration.ControllerConfig()
         filler = Filler()        
-        controller = filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000')
+        controller = filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true')
         self.assertFalse(c.write(controller))
 
 class ComputeConfigTest(unittest.TestCase):
@@ -84,7 +84,7 @@ class ComputeConfigTest(unittest.TestCase):
     def testWrite(self):
         c = configuration.ComputeConfig()
         filler = Filler()        
-        compute = filler.populateCompute('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','qemu')
+        compute = filler.populateCompute('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','qemu','true','eth1','192.168.10.31','100')
         self.assertFalse(c.write(compute))
 
 class NetworkConfigTest(unittest.TestCase):
@@ -101,8 +101,26 @@ class NetworkConfigTest(unittest.TestCase):
     def testWrite(self):
         c = configuration.NetworkConfig()
         filler = Filler()        
-        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','192.168.10.31')
+        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','192.168.10.31','true','ethFLAT','ethPUBLIC')
         self.assertFalse(c.write(network))
+
+class VolumeConfigTest(unittest.TestCase):
+    def setUp(self):
+        pass
+    def tearDown(self):
+        pass
+    def testCheckInstallation(self):
+        c =configuration.VolumeConfig()
+        self.assertTrue(c.checkInstallation())
+    def testRead(self):
+        c = configuration.VolumeConfig()
+        self.assertTrue(c.read())
+    def testWrite(self):
+        c = configuration.VolumeConfig()
+        filler = Filler()        
+        volume = filler.populateVolume('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true','true')
+        volume.export(sys.stdout, 0)
+        self.assertFalse(c.write(volume))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

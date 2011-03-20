@@ -110,8 +110,64 @@
             <service type="libvirt">
                 <property name="type" value="qemu"/>
             </service>
+            <service type="interfaces">
+                <property name="flat_interface" value="eth1"/>
+            </service>
+            <service type="iscsi">
+                <property name="ip_prefix" value="192.168.10.31"/>
+                <property name="num_targets" value="100"/>
+                <property name="storage-hostname" value="nova-volume"/>
+            </service>
         </component>
         <component name="network">
+            <service type="generic">
+                <property name="verbose" value="true"/>
+                <property name="nodaemon" value="true"/>
+            </service>
+            <service type="database">
+                <property name="username" value="root"/>
+                <property name="password" value="nova"/>
+                <property name="host" value="192.168.10.31"/>
+                <property name="port" value="3306"/>
+                <property name="schema" value="nova"/>
+            </service>
+            <service type="authentication">
+                <property name="driver" value="nova.auth.dbdriver.DbDriver"/>
+                <property name="use_project_ca" value="true"/>
+            </service>
+            <service type="logs">
+                <property name="dir" value="/var/log/nova"/>
+            </service>
+            <service type="state">
+                <property name="path" value="/var/lib/nova"/>
+            </service>
+            <service type="s3">
+                <property name="hostname" value="192.168.10.31"/>
+                <property name="dmz" value="192.168.10.31"/>
+            </service>
+            <service type="rabbitmq">
+                <property name="hostname" value="192.168.10.31"/>
+            </service>
+            <service type="ec2">
+                <property name="hostname" value="192.168.10.31"/>
+                <property name="dmz" value="192.168.10.31"/>
+            </service>
+            <service type="network">
+                <property name="type" value="nova.network.manager.VlanManager"/>
+                <property name="fixed_range" value="192.168.0.0/12"/>
+                <property name="network_size" value="5000"/>
+            </service>
+            <service type="dhcpbridge">
+                <property name="process" value="/var/lib/nova/bin/nova-dhcpbridge"/>
+                <property name="file" value="/etc/nova/nova-network.conf"/>
+            </service>
+            <service type="interfaces">
+                <property name="routing_source_ip" value="192.168.10.31"/>
+                <property name="flat_interface" value="ethFLAT"/>
+                <property name="public_interface" value="ethPUBLIC"/>
+            </service>
+        </component>
+        <component name="volume">
             <service type="generic">
                 <property name="verbose" value="true"/>
                 <property name="nodaemon" value="true"/>
@@ -144,16 +200,14 @@
                 <property name="dmz" value="192.168.10.31"/>
             </service>
             <service type="network">
-                <property name="type" value="nova.network.manager.VlanManager"/>
-                <property name="fixed_range" value="192.168.0.0/12"/>
-                <property name="network_size" value="5000"/>
+                <property name="type" value="nova.network.manager.FlatDHCPManager"/>
+                <property name="fixed_range" value="10.0.0.0/8"/>
+                <property name="fixed_range" value="192.168.10.64/28"/>
+                <property name="network_size" value="64"/>
             </service>
-            <service type="dhcpbridge">
-                <property name="process" value="/var/lib/nova/bin/nova-dhcpbridge"/>
-                <property name="file" value="/etc/nova/nova-network.conf"/>
-            </service>
-            <service type="routing_source">
-                <property name="ip" value="192.168.10.31"/>
+            <service type="iscsi">
+                <property name="lvm_device" value="/dev/sdb"/>
+                <property name="use_local_volumes" value="true"/>
             </service>
         </component>
     </cloud>

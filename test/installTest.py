@@ -23,7 +23,7 @@ import os
 
 import install
 
-class Test(unittest.TestCase):
+class PopulateTest(unittest.TestCase):
 
 
     def setUp(self):
@@ -58,14 +58,14 @@ class Test(unittest.TestCase):
                                     'ec2_dmz_host', 
                                     'nova.network.manager.VlanManager',
                                     '192.168.0.0/12',
-                                    '5000')
+                                    '5000',
+                                    'true')
         node.export(sys.stdout,0)
         pass
 
     def testImportNode(self):
         f = install.Filler()
-        node = f.importNode('test_conf.xml')
-        node.export(sys.stdout,0)
+        node = f.importNode('test/test_conf.xml')
         pass
 
 class MachineTest(unittest.TestCase):

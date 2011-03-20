@@ -38,7 +38,7 @@ class Machine:
 
     def __init__(self):
         '''
-        Constructor
+        ConstructorpopulateComputepopulateCompute
         '''
     def getCPUType(self):
         return os.popen2("cat /proc/cpuinfo | grep 'model name' | sed 's/\(.*\): //g'")[1].read().splitlines()
@@ -69,17 +69,18 @@ class Machine:
         ifaces_list=[]
         for x in ifaces:
             y = x.strip()
-            if (y!="lo"):
-                ifaceUp = os.popen2("ifconfig | grep " + y )[1].read()
-                if len(ifaceUp)>0:
-                    ifaces_list.append(y)
+            if (y!="lo") and not(y.startswith("vir")) and not(y.startswith("br")) and not(y.startswith("vnet")) and not(y.startswith("pan")):
+#                ifaceUp = os.popen2("ifconfig | grep " + y )[1].read()
+#                if len(ifaceUp)>0:
+#                    ifaces_list.append(y)
+                ifaces_list.append(y)
         return ifaces_list
 
     def getIfaceVendorList(self,iface):
         vendor =  os.popen2("lshw -short -c network | grep '" + iface + "'")[1].read()[43:].strip("\n")
         return vendor
 
-    def getBlockDeviceList(self):
+    def getMountList(self):
         mnt = commands.getoutput("mount -v")
         lines = mnt.split('\n')
         inf = []
@@ -99,6 +100,35 @@ class Machine:
                 inf.append(dev)
         return inf
 
+    def getBlockDeviceList(self):
+        procfile = open("/proc/partitions")
+        parts = [p.split() for p in procfile.readlines()[2:]]
+        procfile.close()
+        mnt = commands.getoutput("mount -v").split('\n')
+        mounts = [p.split() for p in mnt]
+        mountvalid = {}
+        for p in mounts:
+            if (p[0]!='none'):
+                mountvalid[p[0]] = p
+        inf = []
+        for device in parts:
+            dev = {}
+            if ('/dev/'+device[3] in mountvalid):
+                dev['mountpoint']=mountvalid['/dev/'+device[3]][2]
+                try:
+                    s = os.statvfs(dev['mountpoint'])
+                    dev['size'] = s.f_bsize * s.f_blocks
+                    dev['used'] = s.f_bsize * (s.f_blocks - s.f_bavail)
+                except OSError:
+                    print 'OSError'
+            else:
+                dev['mountpoint']=''
+                dev['size'] = int(device[2]) * 1024
+                dev['used'] = -1
+            dev['device']='/dev/'+device[3]
+            inf.append(dev)
+        return inf
+
 class OperatingSystem(object):
     '''
     classdocs
@@ -112,7 +142,7 @@ class OperatingSystem(object):
         
     def getUname(self):
         uname = platform.uname()
-        return uname[0] + "/" + uname [1] + "/" + uname [2] + "/" + uname [3] + "/" + uname [4]+ "/" + uname [5]
+        return uname[0] + "/" + uname [1] + "/" + uname [2] + "/" + uname [3] + "/" + uname [4]+ "/" + commands.getoutput("cat /etc/nova/STACKOPSVERSION")
     
     def getHostname(self):
         return gethostname()
@@ -332,22 +362,37 @@ class Filler(object):
 
         return dhcpbridge
 
-    def populateRoutingSource(self, rsip):
+    def populateInterfaces(self, rsip,flat_interface,public_interface):
         rs = StackOps.service()
-        rs.set_type('routing_source')
-        ip = StackOps.property()
-        ip.set_name('ip')
-        ip.set_value(rsip)
-        rs.add_property(ip)
+        rs.set_type('interfaces')
+        if (rsip!=None):
+            ip = StackOps.property()
+            ip.set_name('routing_source_ip')
+            ip.set_value(rsip)
+            rs.add_property(ip)
+        if (flat_interface!=None):
+            flat = StackOps.property()
+            flat.set_name('flat_interface')
+            flat.set_value(flat_interface)
+            rs.add_property(flat)
+        if (public_interface!=None):
+            public = StackOps.property()
+            public.set_name('public_interface')
+            public.set_value(public_interface)
+            rs.add_property(public)
         return rs
 
-    def populateAuthentication(self, authdriver):
+    def populateAuthentication(self, authdriver, use_project_ca):
         ser = StackOps.service()
         ser.set_type('authentication')
         driver = StackOps.property()
         driver.set_name('driver')
         driver.set_value(authdriver)
         ser.add_property(driver)
+        ca = StackOps.property()
+        ca.set_name('use_project_ca')
+        ca.set_value(use_project_ca)
+        ser.add_property(ca)
         return ser
 
     def populateLibvirt(self, libvirt_type):
@@ -450,12 +495,58 @@ class Filler(object):
         network_size_network.set_value(network_size)
         network.add_property(network_size_network)
 
-#        flat_interface_network = StackOps.property()
-#        flat_interface_network.set_name('flat_interface')
-#        flat_interface_network.set_value(flat_interface)
-#        network.add_property(flat_interface_network)
-        
         return network
+
+    def populateISCSI(self,iscsi_ip_prefix,num_targets,use_local_volumes):
+        iscsi = StackOps.service()
+        iscsi.set_type('iscsi')
+
+        if (iscsi_ip_prefix!=None):
+            ip_prefix = StackOps.property()
+            ip_prefix.set_name('ip_prefix')
+            ip_prefix.set_value(iscsi_ip_prefix)
+            iscsi.add_property(ip_prefix)
+
+        if (num_targets!=None):
+            n_targets = StackOps.property()
+            n_targets.set_name('num_targets')
+            n_targets.set_value(num_targets)
+            iscsi.add_property(n_targets)
+
+        if (use_local_volumes!=None):
+            local_volumes = StackOps.property()
+            local_volumes.set_name('use_local_volumes')
+            local_volumes.set_value(use_local_volumes)
+            iscsi.add_property(local_volumes)
+
+        return iscsi
+
+    def populateVolume(self, 
+                           verbose,
+                           nodaemon,
+                           mysql_username, 
+                           mysql_password, 
+                           mysql_hostname, 
+                           mysql_port, 
+                           mysql_schema, 
+                           auth_driver,
+                           logdir,
+                           state_path,
+                           s3_host,
+                           s3_dmz,
+                           rabbit_host,
+                           ec2_host, 
+                           ec2_dmz_host, 
+                           network_manager,
+                           network_fixed_range,
+                           network_size,
+                           use_project_ca,
+                           use_local_volumes):
+        volume = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size, use_project_ca)
+        volume.set_name('volume')
+        iscsi = self.populateISCSI(None,None,use_local_volumes)
+        volume.add_service(iscsi)
+        return volume
 
     def populateNetworkNode(self, 
                            verbose,
@@ -478,12 +569,15 @@ class Filler(object):
                            network_size,
                            dhcpbridge_flagfile,
                            dhcpbridge,
-                           routing_source_ip):
-        network = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size)
+                           routing_source_ip,
+                           use_project_ca,
+                           flat_interface,
+                           public_interface):
+        network = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size,use_project_ca)
         network.set_name('network')
         db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
         network.add_service(db)
-        rsip = self.populateRoutingSource(routing_source_ip)
+        rsip = self.populateInterfaces(routing_source_ip,flat_interface,public_interface)
         network.add_service(rsip)
         return network
 
@@ -506,11 +600,19 @@ class Filler(object):
                            network_manager,
                            network_fixed_range,
                            network_size,
-                           libvirt_type):
-        compute = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size)
+                           libvirt_type,
+                           use_project_ca,
+                           flat_interface,
+                           iscsi_ip_prefix,
+                           num_targets):
+        compute = self.populateController(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size, use_project_ca)
         compute.set_name('compute')
         libvirt = self.populateLibvirt(libvirt_type)
         compute.add_service(libvirt)
+        interfaces = self.populateInterfaces(None,flat_interface,None)
+        compute.add_service(interfaces)
+        iscsi = self.populateISCSI(iscsi_ip_prefix,num_targets,None)
+        compute.add_service(iscsi)
         return compute
 
     def populateController(self, 
@@ -531,7 +633,8 @@ class Filler(object):
                            ec2_dmz_host, 
                            network_manager,
                            network_fixed_range,
-                           network_size):
+                           network_size,
+                           use_project_ca):
         
         controller = StackOps.component()
         controller.set_name('controller')
@@ -542,7 +645,7 @@ class Filler(object):
         sql_connection = self.populateSqlConnection(mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema)
         controller.add_service(sql_connection)
         
-        auth = self.populateAuthentication(auth_driver)
+        auth = self.populateAuthentication(auth_driver,use_project_ca)
         controller.add_service(auth)
 
         logs = self.populateLogs(logdir)
@@ -648,36 +751,4 @@ class Filler(object):
 
     def importNode(self,xml):
         node = StackOpssubs.parse(xml)
-        # Only Cloud is relevant
-        return node.get_cloud()
-    
-class Package:
-    '''
-    classdocs
-    '''
-
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-    def install_common(self):
-        
-        utils.execute(self.install_cmd())
-        
-    def install_cmd(self):
-        """Builds apt-get install command"""
-        cmd = ['sudo apt-get install -y',
-               ' rabbitmq']
-#               ' --bind-interfaces',
-#               ' --conf-file=',
-#               ' --pid-file=%s' % _dhcp_file(net['bridge'], 'pid'),
-#               ' --listen-address=%s' % net['gateway'],
-#               ' --except-interface=lo',
-#               ' --dhcp-range=%s,static,120s' % net['dhcp_start'],
-#               ' --dhcp-hostsfile=%s' % _dhcp_file(net['bridge'], 'conf'),
-#               ' --dhcp-script=%s' % FLAGS.dhcpbridge,
-#               ' --leasefile-ro']
-        return ''.join(cmd)
-    
-   
+        return node

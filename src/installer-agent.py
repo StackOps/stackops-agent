@@ -22,6 +22,7 @@ import StringIO
 import threading
 import time
 import os
+import urllib
 from twisted.internet import reactor
 from twisted.web import server, resource
 from twisted.web.static import File
@@ -34,8 +35,8 @@ import configuration
 
 import utils
 
-target = "installer.stackops.org"
-port = 8888
+_target = 'http://installer.stackops.org/entrypoint'
+_port = 8888
 
 def terminate():
     time.sleep(10)
@@ -48,7 +49,27 @@ def importConfiguration(configurator, str):
     strio.write(str)
     strio.seek(0)
     xml = StackOpssubs.parse(strio)
-    configurator.importConfiguration(xml)
+    return configurator.importConfiguration(xml)
+
+def showConfigDone():
+    str = '<html>'
+    str = str + '<head>'
+    str = str + '<title>Welcome to StackOps Smart Installer</title>'
+    str = str + '</head>'
+    str = str + '<body>'
+    str = str + 'Installation completed. Node ready.<br/>'
+    str = str + '</html>'
+    return str
+
+def showError(txt):
+    str = '<html>'
+    str = str + '<head>'
+    str = str + '<title>ERROR!</title>'
+    str = str + '</head>'
+    str = str + '<body>'
+    str = str + txt.replace("\n","<br />\n")
+    str = str + '</html>'
+    return str
 
 #main server resource
 class Root(resource.Resource):
@@ -61,12 +82,12 @@ class Root(resource.Resource):
         xml.export(output,0)
         str = '<html>'
         str = str + '<head>'
-        str = str + '<title>Welcome to StackOps Installer</title>'
+        str = str + '<title>Welcome to StackOps Smart Installer</title>'
         str = str + '</head>'
         str = str + '<body>'
-        str = str + '<h1>Redirecting to StackOps Assistant...</h1>'
+        str = str + 'Redirecting to StackOps Assistant...<br/>'
         str = str + '<div style="display:none">'
-        str = str + '<form name="autoform" id="autoform" action="http://' +  target +'/stackops/install/entrypoint" method="post" >'
+        str = str + '<form name="autoform" id="autoform" action="' + _target + '" method="post" >'
         str = str + '<textarea name="xml" id="xml">'
         str = str + output.getvalue()
         str = str + '</textarea>'
@@ -77,15 +98,19 @@ class Root(resource.Resource):
         str = str + 'document.getElementById("nodeaddress").value=document.location.href;'
         str = str + 'document.autoform.submit();'
         str = str + '</script>'    
-
+        str = str + '</html>'
         return str
 
     def render_POST(self, request):
         try:
-            str = request.args["sysinfo"][0]
+            str = request.args['sysinfo'][0]
             log.msg(str)
-            importConfiguration(_configurator,str)
-            return 'Done.'
+            result = importConfiguration(self._configurator,str)
+            if len(result)==0:
+                return showConfigDone()
+            else:
+                request.setResponseCode(500)
+                return showError(result)
         except:
             er=log.err()
             request.setResponseCode(500)
@@ -120,8 +145,12 @@ class GetConfiguration(resource.Resource):
         try:
             str = request.content.read()
             log.msg(str)
-            importConfiguration(self._configurator,str)
-            return 'OK!'
+            result = importConfiguration(self._configurator,str)
+            if len(result)==0:
+                return showConfigDone()
+            else:
+                request.setResponseCode(500)
+                return showError(result)
         except:
             er=log.err()
             request.setResponseCode(500)
@@ -157,8 +186,8 @@ VIEWS = {
 if __name__ == '__main__':
     s = len(sys.argv)
     if (s==3) :
-        port = int(sys.argv[1])
-        target = sys.argv[2]
+        _port = int(sys.argv[1])
+        _target = sys.argv[2]
     root = Root()
     #add the views to the web service
     for viewName, className in VIEWS.items():
@@ -166,5 +195,5 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     log.msg('Starting server: %s' %str(datetime.now()))
     server = server.Site(root)
-    reactor.listenTCP(port, server)
+    reactor.listenTCP(_port, server)
     reactor.run()

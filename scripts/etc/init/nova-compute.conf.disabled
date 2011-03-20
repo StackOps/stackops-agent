@@ -27,4 +27,4 @@ env NOVA_LOG=/var/log/nova
 
 chdir /var/lib/nova
 
-exec su -c "$NOVA_DIR/$NOVA_APP --flagfile=$NOVA_CONF" >> $NOVA_LOG/$NOVA_APP.log 2>&1
+exec su -c "swapoff -a;$NOVA_DIR/$NOVA_APP --flagfile=$NOVA_CONF" >> $NOVA_LOG/$NOVA_APP.log 2>&1

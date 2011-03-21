@@ -27,6 +27,7 @@ cd build
 
 cp -fR ../scripts/* .
 cp -fR ../src/*.py var/lib/stackops/
+chmod 600 var/lib/stackops/*.sh
 
 tar cvf ../dist/stackops-agent-$VERSION.tar *
 gzip ../dist/stackops-agent-$VERSION.tar

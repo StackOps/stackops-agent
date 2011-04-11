@@ -244,6 +244,8 @@ class ControllerConfig(Config):
                 # now let's start with the hard part
                 utils.execute('apt-cdrom add',None,None,False)
                 utils.execute('apt-get update',None,None,False)
+ 
+                utils.execute('apt-get install -y python-novaclient')
                 
                 utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
                 utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
@@ -266,21 +268,26 @@ class ControllerConfig(Config):
                 utils.execute('mkdir /root/creds')
                 
                 # generate new certificates
-                utils.execute('rm /var/lib/nova/CA/cacert.pem /var/lib/nova/CA/openssl.cnf /var/lib/nova/CA/crl.pem',None,None,False)
-                utils.execute('cd /var/lib/nova/CA; ./genrootca.sh')
+                utils.execute('rm /var/lib/nova/nova/CA/cacert.pem /var/lib/nova/nova/CA/openssl.cnf /var/lib/nova/nova/CA/crl.pem',None,None,False)
+                utils.execute('cd /var/lib/nova/nova/CA; ./genrootca.sh')
                 
+                # CA link to avoid issues with paths
+                utils.execute('rm /var/lib/nova/CA',None,None,False)
+                utils.execute('ln -s /var/lib/nova/nova/CA /var/lib/nova/CA')
+    
                 # nova.conf in bin linked to controller info
                 utils.execute('rm /var/lib/nova/bin/nova.conf',None,None,False)
                 utils.execute('ln -s /etc/nova/nova-controller.conf /var/lib/nova/bin/nova.conf')
-    
+
                 # create the database        
                 utils.execute('/var/lib/nova/bin/nova-manage db sync')
                 # create an admin user called 'admin'
                 utils.execute('/var/lib/nova/bin/nova-manage user admin admin admin admin')
                 # create a project called 'admin' with project manager of 'admin'
                 utils.execute('/var/lib/nova/bin/nova-manage project create admin admin')
-                # export environment variables for project 'admin' and user 'admin'
-                utils.execute('/var/lib/nova/bin/nova-manage project env admin admin /root/creds/novarc')
+                # export credentials
+                utils.execute('/var/lib/nova/bin/nova-manage project zipfile admin admin /root/creds/nova.zip')
+                utils.execute('unzip /root/creds/nova.zip -d /root/creds')
                 # create a small network
                 utils.execute('/var/lib/nova/bin/nova-manage network create ' + fixed_range + ' 1 255')
                 # floating network
@@ -675,6 +682,11 @@ class NetworkConfig(Config):
                 utils.execute('hostname ' + hostname)
                 utils.execute('echo "' + hostname + '" > /etc/hostname')
                 utils.execute("sed -i 's/nova-controller/" + hostname + "/g' /etc/hosts")
+            else:
+                utils.execute('echo "dummy" >> /etc/modules')
+                utils.execute('modprobe dummy')
+                utils.execute('ifconfig dummy0 0.0.0.0')
+                
 
             # enable ipforwarding
             utils.execute('echo 1 | tee /proc/sys/net/ipv4/ip_forward')

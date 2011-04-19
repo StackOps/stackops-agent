@@ -35,7 +35,7 @@ import configuration
 
 import utils
 
-_target = 'http://installer.stackops.org/entrypoint'
+_target = 'installer.stackops.org'
 _port = 8888
 
 def terminate():
@@ -57,7 +57,11 @@ def showConfigDone():
     str = str + '<title>Welcome to StackOps Smart Installer</title>'
     str = str + '</head>'
     str = str + '<body>'
-    str = str + 'Installation completed. Node ready.<br/>'
+    str = str + 'Installation completed. Node ready. Please wait...<br/>'
+    str = str + '<script type="text/javascript">'
+#    str = str + 'window.location = "http://docs.stackops.org/display/documentation/Operating+Openstack+with+Stackops+Distro"'
+    str = str + 'window.location = "http://' + _target + '/install/cloudlist"'
+    str = str + '</script>'
     str = str + '</html>'
     return str
 
@@ -85,9 +89,9 @@ class Root(resource.Resource):
         str = str + '<title>Welcome to StackOps Smart Installer</title>'
         str = str + '</head>'
         str = str + '<body>'
-        str = str + 'Redirecting to StackOps Assistant...<br/>'
+        str = str + 'Redirecting to StackOps Smart Installer Assistant...<br/>'
         str = str + '<div style="display:none">'
-        str = str + '<form name="autoform" id="autoform" action="' + _target + '" method="post" >'
+        str = str + '<form name="autoform" id="autoform" action="http://' + _target + '/entrypoint" method="post" >'
         str = str + '<textarea name="xml" id="xml">'
         str = str + output.getvalue()
         str = str + '</textarea>'

@@ -53,6 +53,11 @@ class ConfiguratorTest(unittest.TestCase):
         c.importConfiguration(node)
         pass
 
+    def testCreateCollectdConfig(self):
+        c = configuration.Configurator()
+        c._createCollectdConfigFile(15, '192.168.10.30')
+        pass
+
 class ControllerConfigTest(unittest.TestCase):
     def setUp(self):
         pass

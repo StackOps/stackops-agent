@@ -22,6 +22,7 @@ import getpass
 import flags
 import install
 import utils
+import os
 
 class Config(object):
     '''
@@ -90,15 +91,14 @@ class Config(object):
 
         parameters = {'user':user, 'password':password, 'host':host, 'port':port, 'schema':schema}
         return parameters
-        
-
 
 class ControllerConfig(Config):
     '''
     classdocs
     '''
 
-    _parameterList = set(['network_size', 
+    _parameterList = set(['lock_path',
+                          'network_size', 
                           'verbose', 
                           'rabbit_host', 
                           'fixed_range', 
@@ -212,7 +212,10 @@ class ControllerConfig(Config):
         ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
         ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        parameters = {'verbose':verbose, 
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        
+        parameters = {'lock_path':lock_path,
+                      'verbose':verbose, 
                       'nodaemon':nodaemon,
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
@@ -245,6 +248,7 @@ class ControllerConfig(Config):
                 utils.execute('apt-cdrom add',None,None,False)
                 utils.execute('apt-get update',None,None,False)
  
+                utils.execute('apt-get install -y rrdtool')
                 utils.execute('apt-get install -y python-novaclient')
                 
                 utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
@@ -267,6 +271,9 @@ class ControllerConfig(Config):
                 utils.execute('rm -fr /root/creds')
                 utils.execute('mkdir /root/creds')
                 
+                # stackops
+                utils.execute('adduser nova --disabled-password --gecos ""',None,None,False)
+
                 # generate new certificates
                 utils.execute('rm /var/lib/nova/nova/CA/cacert.pem /var/lib/nova/nova/CA/openssl.cnf /var/lib/nova/nova/CA/crl.pem',None,None,False)
                 utils.execute('cd /var/lib/nova/nova/CA; ./genrootca.sh')
@@ -292,9 +299,6 @@ class ControllerConfig(Config):
                 utils.execute('/var/lib/nova/bin/nova-manage network create ' + fixed_range + ' 1 255')
                 # floating network
 #                utils.execute('/var/lib/nova/bin/nova-manage float create ' + hostname + ' ' + floating_range)
-        
-                # stackops
-                utils.execute('adduser nova --disabled-password --gecos ""',None,None,False)
                 
                 # enable controller components
                 utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf',None,None,False)
@@ -303,10 +307,10 @@ class ControllerConfig(Config):
                 utils.execute('mv /etc/init/nova-objectstore.conf.disabled /etc/init/nova-objectstore.conf',None,None,False)
         
                 # start controller components
-                utils.execute('start nova-ajax-console-proxy')
-                utils.execute('start nova-api')
-                utils.execute('start nova-scheduler')
-                utils.execute('start nova-objectstore')
+                utils.execute('stop nova-ajax-console-proxy; start nova-ajax-console-proxy')
+                utils.execute('stop nova-api; start nova-api')
+                utils.execute('stop nova-scheduler; start nova-scheduler')
+                utils.execute('stop nova-objectstore; start nova-objectstore')
     
                 utils.execute('umount /cdrom')
         except  Exception as inst:
@@ -318,7 +322,8 @@ class ComputeConfig(Config):
     classdocs
     '''
 
-    _parameterList = set(['network_size', 
+    _parameterList = set(['lock_path',
+                          'network_size', 
                           'verbose', 
                           'rabbit_host', 
                           'fixed_range', 
@@ -451,7 +456,10 @@ class ComputeConfig(Config):
         iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
         num_targets = self._filler.getPropertyValue(xmldoc, 'iscsi', 'num_targets')
 
-        parameters = {'verbose':verbose, 
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        
+        parameters = {'lock_path':lock_path,
+                      'verbose':verbose, 
                       'nodaemon':nodaemon,
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
@@ -504,9 +512,9 @@ class ComputeConfig(Config):
             # enable controller components
             utils.execute('mv /etc/init/nova-compute.conf.disabled /etc/init/nova-compute.conf',None,None,False)
             # start libvirt components
-            utils.execute('start libvirt-bin')
+            utils.execute('stop libvirt-bin; start libvirt-bin')
             # start compute components
-            utils.execute('start nova-compute')
+            utils.execute('stop nova-compute; start nova-compute')
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
@@ -516,7 +524,8 @@ class NetworkConfig(Config):
     classdocs
     '''
 
-    _parameterList = set(['network_size', 
+    _parameterList = set(['lock_path',
+                          'network_size', 
                           'verbose', 
                           'rabbit_host', 
                           'fixed_range', 
@@ -647,7 +656,10 @@ class NetworkConfig(Config):
         ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
         ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        parameters = {'verbose':verbose, 
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        
+        parameters = {'lock_path':lock_path,
+                      'verbose':verbose, 
                       'nodaemon':nodaemon,
 # NOVA-NETWORK SPECIFIC
                       'dhcpbridge':dhcpbridge,
@@ -705,7 +717,7 @@ class NetworkConfig(Config):
             # enable network components
             utils.execute('mv /etc/init/nova-network.conf.disabled /etc/init/nova-network.conf',None,None,False)
             # start network components
-            utils.execute('start nova-network')
+            utils.execute('stop nova-network; start nova-network')
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
@@ -715,7 +727,8 @@ class VolumeConfig(Config):
     classdocs
     '''
 
-    _parameterList = set(['network_size', 
+    _parameterList = set(['lock_path',
+                          'network_size', 
                           'verbose', 
                           'rabbit_host', 
                           'fixed_range', 
@@ -833,7 +846,10 @@ class VolumeConfig(Config):
 
         use_local_volumes = self._filler.getPropertyValue(xmldoc, 'iscsi', 'use_local_volumes')
 
-        parameters = {'verbose':verbose, 
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        
+        parameters = {'lock_path':lock_path,
+                      'verbose':verbose, 
                       'nodaemon':nodaemon,
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
@@ -870,10 +886,10 @@ class VolumeConfig(Config):
             utils.execute("sed -i 's/false/true/g' /etc/default/iscsitarget")
             utils.execute('service iscsitarget start')
             # create nova-volumes
-            utils.execute('pvcreate ' + lvm_device)
+            utils.execute('vgremove -ff nova-volumes; pvcreate -ffy ' + lvm_device)
             utils.execute('vgcreate nova-volumes ' + lvm_device)
             # start compute components
-            utils.execute('start nova-volume')
+            utils.execute('stop nova-volume; start nova-volume')
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
@@ -893,6 +909,76 @@ class Configurator(object):
         '''
         Constructor
         '''
+
+    def _createCollectdConfigFile(self,configType,controllerIP):
+        path = '/etc/collectd'
+        filename = 'collectd.conf'
+        try:
+            if not os.path.exists(path):
+                raise Exception("Directory " + path + " does not exists")
+        except Exception:
+            raise Exception("Error reading directory " + path)        
+        try:    
+            f  = open(path + '/' + filename,'w')
+            f.write('# This is an automatically generated file by stackops\n')
+            f.write('# Change the parameters manually at your own risk\n')
+            f.write('FQDNLookup true\n')
+            f.write('\n')            
+            f.write('LoadPlugin "logfile"\n')
+            f.write('LoadPlugin "network"\n')
+            f.write('\n')
+            if configType & 1 == 1 :
+                f.write('# Server configuration\n')    
+                f.write('LoadPlugin "rrdtool"\n')
+                f.write('\n')
+
+            f.write('# Client configuration\n')
+            f.write('LoadPlugin "interface"\n')
+            f.write('LoadPlugin "cpu"\n')
+            f.write('LoadPlugin "memory"\n')
+            f.write('LoadPlugin "df"\n')
+            f.write('LoadPlugin "disk"\n')
+            f.write('LoadPlugin "vmem"\n')
+            f.write('LoadPlugin "swap"\n')
+            if (configType & 8 == 8):
+                f.write('# compute node specific\n')    
+                f.write('LoadPlugin "libvirt"\n')
+            if (configType & 2 == 2):
+                f.write('# network node specific\n')    
+                f.write('LoadPlugin "iptables"\n')
+
+            f.write('\n')
+            f.write('<Plugin "network">\n')
+            if configType & 1 == 1 :
+                f.write('  Listen "' + controllerIP + '"\n')
+            f.write('  Server "' + controllerIP + '"\n')
+            f.write('</Plugin>\n')
+            f.write('\n')
+
+            if configType & 1 == 1 :
+                f.write('<Plugin rrdtool>\n')
+                f.write('  DataDir "/var/lib/collectd/rrd"\n')
+                f.write('</Plugin>\n')
+                f.write('\n')
+            
+            f.write('<Plugin "interface">\n')
+            f.write('  Interface "lo"\n')
+            f.write('  IgnoreSelected true\n')
+            f.write('</Plugin>\n')
+
+            if (configType == 8) or (configType == 15):
+                f.write('<Plugin "libvirt">\n')
+                f.write('  Connection "qemu:///system"\n')
+                f.write('  HostnameFormat "name"\n')
+                f.write('</Plugin>\n')
+            
+            f.close()
+        except Exception:
+            print "Error writing file. " + path + '/' + filename
+            raise Exception("Error writing file. " + path + '/' + filename)        
+
+
+
     # Check the existing configuration files        
     def detectConfiguration(self):
         cloud = None
@@ -927,9 +1013,13 @@ class Configurator(object):
     def importConfiguration(self,xml):
         # Change hostname from XML information
         hostname = xml.get_software().get_os().get_network().get_hostname()      
+        configType = 0
+        collectd_listener = 'localhost'
         for component in xml.get_cloud().get_component():            
             # Is a Controller?
             if (component.get_name()=='controller'):
+                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
+                configType = configType | 1
                 self._controllerConfig.write(component)
                 result = self._controllerConfig.install(component,hostname)
                 if (len(result)>0):
@@ -937,6 +1027,8 @@ class Configurator(object):
     
             # Is a Compute?
             if (component.get_name()=='compute'):
+                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
+                configType = configType | 8
                 self._computeConfig.write(component)
                 result = self._computeConfig.install(component,hostname)
                 if (len(result)>0):
@@ -944,6 +1036,8 @@ class Configurator(object):
 
             # Is a Network?
             if (component.get_name()=='network'):
+                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
+                configType = configType | 2
                 self._networkConfig.write(component)
                 result = self._networkConfig.install(component,hostname)
                 if (len(result)>0):
@@ -951,6 +1045,8 @@ class Configurator(object):
             
             # Is a Volume?
             if (component.get_name()=='volume'):
+                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
+                configType = configType | 4
                 self._volumeConfig.write(component)
                 result = self._volumeConfig.install(component,hostname)
                 if (len(result)>0):
@@ -959,6 +1055,13 @@ class Configurator(object):
         #
         #
         #
+        # configType = 15, single node
+        # configType = 7, dual node controller
+        # configType = 1, 2, 4 multinode
+        # configType = 8 dual o multinode (compute node)
+        
+        self._createCollectdConfigFile(configType,collectd_listener)
+        utils.execute('service collectd restart')
         
         return ''
     

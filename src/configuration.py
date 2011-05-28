@@ -242,20 +242,23 @@ class ControllerConfig(Config):
                 fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
                 floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
         
-                utils.execute('mount /cdrom')
+#                utils.execute('mount /cdrom')
     
                 # now let's start with the hard part
-                utils.execute('apt-cdrom add',None,None,False)
-                utils.execute('apt-get update',None,None,False)
+#                utils.execute('apt-cdrom add',None,None,False)
+#                utils.execute('apt-get update',None,None,False)
  
-                utils.execute('apt-get install -y rrdtool')
-                utils.execute('apt-get install -y python-novaclient')
+#                utils.execute('apt-get install -y nfs-kernel-server')
+                utils.execute('echo "\n/var/lib/nova/images/    *(rw,sync,fsid=0,no_root_squash)" >> /etc/exports')
+
+#                utils.execute('apt-get install -y rrdtool')
+#                utils.execute('apt-get install -y python-novaclient')
                 
-                utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
-                utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
-                utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
+#                utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
+#                utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
+#                utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
         
-                utils.execute('apt-get install -y mysql-server')
+#                utils.execute('apt-get install -y mysql-server')
         
                 utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
                 utils.execute('service mysql restart')
@@ -265,7 +268,7 @@ class ControllerConfig(Config):
                 utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
                 utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
         
-                utils.execute('DEBIAN_FRONTEND=noninteractive apt-get install -y rabbitmq-server')
+#                utils.execute('DEBIAN_FRONTEND=noninteractive apt-get install -y rabbitmq-server')
                 
                 utils.execute('killall dnsmasq',None,None,False)
                 utils.execute('rm -fr /root/creds')
@@ -311,8 +314,10 @@ class ControllerConfig(Config):
                 utils.execute('stop nova-api; start nova-api')
                 utils.execute('stop nova-scheduler; start nova-scheduler')
                 utils.execute('stop nova-objectstore; start nova-objectstore')
+                utils.execute('service nfs-kernel-server stop; service nfs-kernel-server start')
+                utils.execute('service idmapd stop; service idmapd start')
     
-                utils.execute('umount /cdrom')
+#                utils.execute('umount /cdrom')
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
@@ -498,15 +503,19 @@ class ComputeConfig(Config):
                 # enable flat interface
                 utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")
                 utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
+                # configure NFS mount
+                utils.execute('echo "\n' + ec2_hostname + ':/var/lib/nova/images /var/lib/nova/images nfs defaults 0 0" >> /etc/fstab')
+                
 
             # add to /etc/hosts file the hostname of nova-volume
             if (storage_hostname!='nova-controller'):
-                utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')
-            
+                utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')           
             
             # iptables rule to get metadata from controller
-            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')             
+#            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')             
              
+            # mount NFS remote
+            utils.execute('mount -a',None,None,False)
             # enable libvirt-bin
             utils.execute('mv /etc/init/libvirt-bin.conf.disabled /etc/init/libvirt-bin.conf',None,None,False)
             # enable controller components
@@ -664,7 +673,7 @@ class NetworkConfig(Config):
 # NOVA-NETWORK SPECIFIC
                       'dhcpbridge':dhcpbridge,
                       'dhcpbridge_flagfile':dhcpbridge_flagfile, 
-                      'routing_source_ip':routing_source_ip, 
+#                      'routing_source_ip':routing_source_ip, 
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
                       'network_size':network_size,
@@ -689,6 +698,8 @@ class NetworkConfig(Config):
         try:
             flat_interface = self._filler.getPropertyValue(xmldoc,'interfaces','flat_interface')
             floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
+            fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
+            ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
 
             if (hostname!='nova-controller'):
                 utils.execute('hostname ' + hostname)
@@ -699,9 +710,6 @@ class NetworkConfig(Config):
                 utils.execute('modprobe dummy')
                 utils.execute('ifconfig dummy0 0.0.0.0')
                 
-
-            # enable ipforwarding
-            utils.execute('echo 1 | tee /proc/sys/net/ipv4/ip_forward')
 
             # nova.conf in bin linked to network info
             utils.execute('rm /var/lib/nova/bin/nova.conf',None,None,False)
@@ -714,10 +722,18 @@ class NetworkConfig(Config):
             utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")
             utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
 
+            # enable ipforwarding
+#            utils.execute('echo 1 | tee /proc/sys/net/ipv4/ip_forward')
+            utils.execute("sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf")
+            utils.execute("sysctl -p /etc/sysctl.conf")
+
             # enable network components
             utils.execute('mv /etc/init/nova-network.conf.disabled /etc/init/nova-network.conf',None,None,False)
             # start network components
             utils.execute('stop nova-network; start nova-network')
+#            if (hostname!='nova-controller'):
+                # iptables rule to get metadata from controller
+#                utils.execute('iptables -t nat -A  nova-network-POSTROUTING -s ' + fixed_range + ' -d ' + ec2_hostname + ' -j ACCEPT')             
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result

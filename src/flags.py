@@ -66,7 +66,10 @@ class Flags():
                 value = parameters[key]
                 str = key
                 if (len(value)>0):
-                    str = str + '=' + value
+		    if (value!='True'):
+                        str = str + '=' + value
+		    else:
+			str = str
                 f.write('--' + str + '\n')
             f.close()
         except Exception:

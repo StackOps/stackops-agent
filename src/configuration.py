@@ -229,7 +229,8 @@ class ControllerConfig(Config):
                       'rabbit_host':rabbit_host, 
                       'ec2_host':ec2_hostname,
                       'ec2_dmz_host':ec2_dmz,
-                      'use_project_ca':use_project_ca}
+                      'use_project_ca':use_project_ca,
+		      'flat_network_bridge':'br100'}
         
         self._writeFile(self._filename,parameters)
         return
@@ -299,9 +300,9 @@ class ControllerConfig(Config):
                 utils.execute('/var/lib/nova/bin/nova-manage project zipfile admin admin /root/creds/nova.zip')
                 utils.execute('unzip /root/creds/nova.zip -d /root/creds')
                 # create a small network
-                utils.execute('/var/lib/nova/bin/nova-manage network create ' + fixed_range + ' 1 255')
+                utils.execute('/var/lib/nova/bin/nova-manage network create service ' + fixed_range + ' 1 255')
                 # floating network
-#                utils.execute('/var/lib/nova/bin/nova-manage float create ' + hostname + ' ' + floating_range)
+                utils.execute('/var/lib/nova/bin/nova-manage float create ' + floating_range)
                 
                 # enable controller components
                 utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf',None,None,False)
@@ -716,7 +717,7 @@ class NetworkConfig(Config):
             utils.execute('ln -s /etc/nova/nova-network.conf /var/lib/nova/bin/nova.conf')
 
             # floating network
-            utils.execute('/var/lib/nova/bin/nova-manage float create ' + hostname + ' ' + floating_range)
+#            utils.execute('/var/lib/nova/bin/nova-manage float create ' + hostname + ' ' + floating_range)
 
             # enable flat interface
             utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")

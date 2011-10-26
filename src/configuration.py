@@ -75,7 +75,6 @@ class Config(object):
             
     def write(self,xmldoc):
         raise NotImplementedError( "Should have implemented this" )
-
 # Parse connection string
     def _parseConnectionString(self, conn):
         con = conn.split('://')
@@ -92,11 +91,55 @@ class Config(object):
         parameters = {'user':user, 'password':password, 'host':host, 'port':port, 'schema':schema}
         return parameters
 
+    def _installDeb(self,name,interactive=True):
+        if (interactive):
+            utils.execute('apt-get -y install %s' % name)
+        else:
+            utils.execute('DEBIAN_FRONTEND=noninteractive apt-get -y install %s' % name)
+
+    def installPackagesCommon(self):
+        utils.execute('apt-get -y update')
+        self._installDeb('python-software-properties')
+        self._installDeb('python-sqlalchemy')
+        self._installDeb('python-mox')
+        self._installDeb('python-greenlet')
+        self._installDeb('python-carrot')
+        self._installDeb('python-migrate')
+        self._installDeb('python-eventlet')
+        self._installDeb('python-gflags')
+        self._installDeb('python-ipy')
+        self._installDeb('python-tempita')
+        self._installDeb('python-libxml2')
+        self._installDeb('python-lxml')
+        self._installDeb('python-routes')
+        self._installDeb('python-cheetah')
+        self._installDeb('python-netaddr')
+        self._installDeb('python-paste')
+        self._installDeb('python-pastedeploy')
+        self._installDeb('python-mysqldb')
+        self._installDeb('python-kombu')
+        self._installDeb('python-novaclient')
+        self._installDeb('python-xattr')
+        self._installDeb('python-glance')
+        self._installDeb('python-lockfile')
+        self._installDeb('gawk')
+        self._installDeb('curl')
+        self._installDeb('socat')
+        self._installDeb('unzip')
+        self._installDeb('vlan')
+        self._installDeb('open-iscsi')
+
+    def installPackages(self):
+        raise NotImplementedError( "Should have implemented this" )
+
+
 class ControllerConfig(Config):
     '''
     classdocs
     '''
 
+    _mysql_pass='nova'
+    
     _parameterList = set(['lock_path',
                           'network_size', 
                           'verbose', 
@@ -240,27 +283,13 @@ class ControllerConfig(Config):
         try:
             if (getpass.getuser()=='root'):
                 mysql_pass = self._filler.getPropertyValue(xmldoc, 'database', 'password')
+                self._mysql_pass = mysql_pass
                 fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
                 floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
-        
-#                utils.execute('mount /cdrom')
-    
-                # now let's start with the hard part
-#                utils.execute('apt-cdrom add',None,None,False)
-#                utils.execute('apt-get update',None,None,False)
- 
-#                utils.execute('apt-get install -y nfs-kernel-server')
-                utils.execute('echo "\n/var/lib/nova/images/    *(rw,sync,fsid=0,no_root_squash)" >> /etc/exports')
-
-#                utils.execute('apt-get install -y rrdtool')
-#                utils.execute('apt-get install -y python-novaclient')
                 
-#                utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + mysql_pass + ' | debconf-set-selections')
-#                utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + mysql_pass + ' | debconf-set-selections')
-#                utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
-        
-#                utils.execute('apt-get install -y mysql-server')
-        
+                # Install packages for component
+                self.installPackages()
+                
                 utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
                 utils.execute('service mysql restart')
         
@@ -268,8 +297,6 @@ class ControllerConfig(Config):
                 utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "CREATE DATABASE nova;"''')
                 utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
                 utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
-        
-#                utils.execute('DEBIAN_FRONTEND=noninteractive apt-get install -y rabbitmq-server')
                 
                 utils.execute('killall dnsmasq',None,None,False)
                 utils.execute('rm -fr /root/creds')
@@ -315,13 +342,22 @@ class ControllerConfig(Config):
                 utils.execute('stop nova-api; start nova-api')
                 utils.execute('stop nova-scheduler; start nova-scheduler')
                 utils.execute('stop nova-objectstore; start nova-objectstore')
-                utils.execute('service nfs-kernel-server stop; service nfs-kernel-server start')
-                utils.execute('service idmapd stop; service idmapd start')
-    
-#                utils.execute('umount /cdrom')
+                utils.execute('glance-control all restart')
+
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('euca2ools')
+        self._installDeb('cloud-utils')
+        self._installDeb('glance')
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + self._mysql_pass + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + self._mysql_pass + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
+        self._installDeb('mysql-server')
+        self._installDeb('rabbitmq-server',False)
 
 class ComputeConfig(Config):
     '''
@@ -497,6 +533,9 @@ class ComputeConfig(Config):
             iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
             ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
 
+            # Install packages for component
+            self.installPackages()
+
             if (hostname!='nova-controller'):
                 utils.execute('hostname ' + hostname)
                 utils.execute('echo "' + hostname + '" > /etc/hostname')
@@ -528,6 +567,15 @@ class ComputeConfig(Config):
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('kvm')
+        self._installDeb('iptables')
+        self._installDeb('ebtables')
+        self._installDeb('user-mode-linux')
+        self._installDeb('libvirt-bin')
+        self._installDeb('python-libvirt')
 
 class NetworkConfig(Config):
     '''
@@ -702,6 +750,9 @@ class NetworkConfig(Config):
             fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
             ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
 
+            # Install packages for component
+            self.installPackages()
+
             if (hostname!='nova-controller'):
                 utils.execute('hostname ' + hostname)
                 utils.execute('echo "' + hostname + '" > /etc/hostname')
@@ -738,6 +789,12 @@ class NetworkConfig(Config):
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('dnsmasq-base')
+        self._installDeb('iptables')
+        self._installDeb('ebtables')
 
 class VolumeConfig(Config):
     '''
@@ -890,6 +947,10 @@ class VolumeConfig(Config):
     def install(self,xmldoc,hostname):
         result=''
         try:
+            
+            # Install packages for component
+            self.installPackages()
+            
             if (hostname!='nova-controller'):
                 utils.execute('hostname ' + hostname)
                 utils.execute('echo "' + hostname + '" > /etc/hostname')
@@ -910,6 +971,12 @@ class VolumeConfig(Config):
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('kpartx')
+        self._installDeb('lvm2')
+        self._installDeb('iscsitarget')
 
 class Configurator(object):
     '''
@@ -1077,8 +1144,9 @@ class Configurator(object):
         # configType = 1, 2, 4 multinode
         # configType = 8 dual o multinode (compute node)
         
-        self._createCollectdConfigFile(configType,collectd_listener)
-        utils.execute('service collectd restart')
+# Deprecated.
+#        self._createCollectdConfigFile(configType,collectd_listener)
+#        utils.execute('service collectd restart')
         
         return ''
     

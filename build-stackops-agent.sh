@@ -31,7 +31,10 @@ chmod 700 var/lib/stackops/*.sh
 
 tar cvf ../dist/stackops-agent-$VERSION.tar *
 gzip ../dist/stackops-agent-$VERSION.tar
-s3cmd put --acl-public --guess-mime-type ../dist/stackops-agent-$VERSION.tar.gz s3://stackops/stackops-agent-$VERSION.tar.gz
+if [ "$DEV" != "true" ]; then
+    s3cmd put --acl-public --guess-mime-type ../dist/stackops-agent-$VERSION.tar.gz s3://stackops/stackops-agent-$VERSION.tar.gz
+fi
+
 cd ..
 
 rm -fR build

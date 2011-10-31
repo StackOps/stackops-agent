@@ -106,7 +106,8 @@ class NetworkConfigTest(unittest.TestCase):
     def testWrite(self):
         c = configuration.NetworkConfig()
         filler = Filler()        
-        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','192.168.10.31','true','ethFLAT','ethPUBLIC')
+#        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','192.168.10.31','true','ethFLAT','ethPUBLIC')
+        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','true','ethFLAT','ethPUBLIC')
         self.assertFalse(c.write(network))
 
 class VolumeConfigTest(unittest.TestCase):

@@ -29,11 +29,11 @@ class Flags():
         '''
         Constructor
         '''
-    
+
     def readFile(self,path,filename):
         if not os.path.exists(path + '/' + filename):
             raise Exception('File does not exists:' + path + '/' + filename)
-        
+
         with open(path + '/' + filename,'r') as f:
             read_data = f.readlines()
             parameters = {}
@@ -48,7 +48,7 @@ class Flags():
                     parameters[key] = value
         f.closed
         return parameters
-        
+
     def writeFile(self,path,filename,parameters):
         try:
             if not os.path.exists(path):
@@ -56,7 +56,7 @@ class Flags():
         except Exception:
             print "Error creating directory " + path 
             raise Exception("Error creating directory " + path)
-        
+
         try:    
             f  = open(path + '/' + filename,'w')
             f.write('# This is an automatically generated file by stackops\n')
@@ -65,11 +65,11 @@ class Flags():
                 key = parameter
                 value = parameters[key]
                 str = key
-                if (len(value)>0):
-		    if (value!='True'):
+                if len(value)>0:
+                    if value!='True' and value!= "true":
                         str = str + '=' + value
-		    else:
-			str = str
+                    else:
+                        str = str
                 f.write('--' + str + '\n')
             f.close()
         except Exception:

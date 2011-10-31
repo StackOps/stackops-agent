@@ -157,7 +157,7 @@ class OperatingSystem(object):
             if (line.startswith("nameserver")):
                 inf.add(line.split(" ")[1])
         return inf
-        
+
     def getNetworkConfiguration(self):
         machine = Machine()
         inf = []        
@@ -195,7 +195,7 @@ class OperatingSystem(object):
             if (len(dev)>0):
                 inf.append(dev)
         return inf
-                
+
 class Filler(object):
     '''
     classdocs
@@ -362,14 +362,14 @@ class Filler(object):
 
         return dhcpbridge
 
-    def populateInterfaces(self, rsip,flat_interface,public_interface):
+    def populateInterfaces(self, flat_interface,public_interface):
         rs = StackOps.service()
         rs.set_type('interfaces')
-        if (rsip!=None):
-            ip = StackOps.property()
-            ip.set_name('routing_source_ip')
-            ip.set_value(rsip)
-            rs.add_property(ip)
+#        if (rsip!=None):
+#            ip = StackOps.property()
+#            ip.set_name('routing_source_ip')
+#            ip.set_value(rsip)
+#            rs.add_property(ip)
         if (flat_interface!=None):
             flat = StackOps.property()
             flat.set_name('flat_interface')
@@ -569,7 +569,7 @@ class Filler(object):
                            network_size,
                            dhcpbridge_flagfile,
                            dhcpbridge,
-                           routing_source_ip,
+#                           routing_source_ip,
                            use_project_ca,
                            flat_interface,
                            public_interface):
@@ -577,7 +577,8 @@ class Filler(object):
         network.set_name('network')
         db = self.populateDhcpbridge(dhcpbridge,dhcpbridge_flagfile)
         network.add_service(db)
-        rsip = self.populateInterfaces(routing_source_ip,flat_interface,public_interface)
+#        rsip = self.populateInterfaces(routing_source_ip,flat_interface,public_interface)
+        rsip = self.populateInterfaces(flat_interface,public_interface)
         network.add_service(rsip)
         return network
 
@@ -609,7 +610,8 @@ class Filler(object):
         compute.set_name('compute')
         libvirt = self.populateLibvirt(libvirt_type)
         compute.add_service(libvirt)
-        interfaces = self.populateInterfaces(None,flat_interface,None)
+#        interfaces = self.populateInterfaces(None,flat_interface,None)
+        interfaces = self.populateInterfaces(flat_interface,None)
         compute.add_service(interfaces)
         iscsi = self.populateISCSI(iscsi_ip_prefix,num_targets,None)
         compute.add_service(iscsi)
@@ -684,13 +686,13 @@ class Filler(object):
         node.set_cloud(cloud)
         return node
     
-    def getPropertyValue(self,component,service_name,property_name):
+    def getPropertyValue(self,component,service_name,property_name, default=''):
         for i in component.get_service():
             if (i.get_type()==service_name):
                 for j in i.get_property():
                     if (j.get_name()==property_name):
                         return j.get_value()
-        return ''            
+        return default
 
     def createNode(self,cloud):
         

@@ -12,11 +12,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Created on Feb 21, 2011
 
 @author: Diego Parrilla
-'''
+"""
 import getpass
 
 import flags
@@ -31,14 +31,15 @@ class Config(object):
 
     _parameterList = set(['param1','param2','param3','param4'])
     _filename = "nofilename"
- 
+
     _flags = flags.Flags()
     _filler = install.Filler()
-    
+    _operatingsystem = install.OperatingSystem()
+
     def __init__(self):
-        '''
+        """
         Constructor
-        '''
+        """
      
     def _readFile(self, filename):
         return self._flags.readFile("/etc/nova", filename)
@@ -56,7 +57,9 @@ class Config(object):
         raise NotImplementedError( "Should have implemented this" )
     
     def checkInstallation(self):
-        # Read the configuration file
+        """
+        Read the configuration file
+        """
         try:
             parameters = self._readFile(self._filename)
         except Exception:
@@ -64,7 +67,7 @@ class Config(object):
             return False
         
         # Exists the configuration file, but empty
-        if (len(self._filename)<1):
+        if len(self._filename)<1:
             return False
         
         # Check if the full list of needed parameters are in the config file
@@ -132,7 +135,6 @@ class Config(object):
     def installPackages(self):
         raise NotImplementedError( "Should have implemented this" )
 
-
 class ControllerConfig(Config):
     '''
     classdocs
@@ -141,21 +143,29 @@ class ControllerConfig(Config):
     _mysql_pass='nova'
     
     _parameterList = set(['lock_path',
-                          'network_size', 
-                          'verbose', 
-                          'rabbit_host', 
-                          'fixed_range', 
-                          'sql_connection', 
-                          'ec2_dmz_host', 
-                          'state_path', 
-                          'auth_driver', 
-                          'network_manager', 
-                          'ec2_host', 
-                          's3_dmz', 
-                          'logdir', 
-                          's3_host', 
-                          'nodaemon',
-                          'use_project_ca'])
+                         'verbose',
+                         'nodaemon',
+                         'network_manager',
+                         'fixed_range',
+                         'network_size',
+                         'sql_connection',
+                         'auth_driver',
+                         'logdir',
+                         'state_path',
+                         's3_host',
+                         's3_dmz',
+                         'rabbit_host',
+                         'ec2_host',
+                         'ec2_dmz_host',
+                         'use_project_ca',
+                         'flat_network_bridge',
+                         'image_service',
+                         'glance_api_servers',
+                         'my_ip',
+                         'scheduler_driver',
+                         'max_cores',
+                         'ec2_port',
+                         's3_port'])
 
     _filename = "nova-controller.conf"
 
@@ -208,7 +218,7 @@ class ControllerConfig(Config):
             ec2_dmz_host = parameters['ec2_dmz_host']
 
             # network configuration
-            network_manager = parameters['network_manager']        
+            network_manager = parameters['network_manager']
             network_fixed_range = parameters['fixed_range']
             network_size = parameters['network_size']
 #            flat_interface = parameters['flat_interface']
@@ -226,6 +236,14 @@ class ControllerConfig(Config):
 
 # Write the parameters (if possible) from the xml file
     def write(self,xmldoc):
+
+        iface_list = self._operatingsystem.getNetworkConfiguration()
+        management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        my_ip='127.0.0.1'
+        for iface in iface_list:
+            if iface['name']==management_interface:
+                my_ip = iface['address']
+
         verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
         nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
 
@@ -255,7 +273,19 @@ class ControllerConfig(Config):
         ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
         ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+        
+        # WARNING:THIS PARAMETERS SHOULD BE CONFIGURED FROM PROPERTY XML
+        glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', rabbit_host) # interim solution
+        glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
+        image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
+        
+        max_cores = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_cores', 64)
+        ec2_port = self._filler.getPropertyValue(xmldoc, 'ec2', 'port', 8773)
+        s3_port = self._filler.getPropertyValue(xmldoc, 's3', 'port', 3333)
+        
+        scheduler_driver  = self._filler.getPropertyValue(xmldoc, 'scheduler', 'driver', 'nova.scheduler.simple.SimpleScheduler')
+        flat_network_bridge = self._filler.getPropertyValue(xmldoc,'network','bridge','br100')
         
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
@@ -266,19 +296,29 @@ class ControllerConfig(Config):
                       'sql_connection':sql_connection, 
                       'auth_driver':auth_driver, 
                       'logdir':logdir, 
-                      'state_path':state_path,                       
+                      'state_path':state_path,
                       's3_host':s3_host, 
                       's3_dmz':s3_dmz, 
                       'rabbit_host':rabbit_host, 
                       'ec2_host':ec2_hostname,
                       'ec2_dmz_host':ec2_dmz,
                       'use_project_ca':use_project_ca,
-		      'flat_network_bridge':'br100'}
+                      'flat_network_bridge':'%s' % flat_network_bridge,
+                      'image_service':'%s' % image_service,
+                      'glance_api_servers':'%s:%s' % (glance_hostname,glance_port),
+                      'my_ip':'%s' % my_ip,
+                      'scheduler_driver': '%s' % scheduler_driver,
+                      'max_cores':'%s' % max_cores,
+                      'ec2_port':'%s' % ec2_port,
+                      's3_port':'%s' % s3_port}
         
         self._writeFile(self._filename,parameters)
         return
 
     def install(self,xmldoc,hostname):
+        """
+        Install all stuff needed to run a controller
+        """
         result =''
         try:
             if (getpass.getuser()=='root'):
@@ -286,7 +326,7 @@ class ControllerConfig(Config):
                 self._mysql_pass = mysql_pass
                 fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
                 floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
-                
+
                 # Install packages for component
                 self.installPackages()
                 
@@ -498,8 +538,14 @@ class ComputeConfig(Config):
         iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
         num_targets = self._filler.getPropertyValue(xmldoc, 'iscsi', 'num_targets')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
         
+        iface_list = self._operatingsystem.getNetworkConfiguration()
+        management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        for iface in iface_list:
+            if iface['name']==management_interface:
+                my_ip = iface['address']
+                
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
                       'nodaemon':nodaemon,
@@ -537,25 +583,22 @@ class ComputeConfig(Config):
             self.installPackages()
 
             if (hostname!='nova-controller'):
-                utils.execute('hostname ' + hostname)
-                utils.execute('echo "' + hostname + '" > /etc/hostname')
-                utils.execute("sed -i 's/nova-controller/" + hostname + "/g' /etc/hosts")            
                 # enable flat interface
                 utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")
                 utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
                 # configure NFS mount
-                utils.execute('echo "\n' + ec2_hostname + ':/var/lib/nova/images /var/lib/nova/images nfs defaults 0 0" >> /etc/fstab')
-                
+#                utils.execute('echo "\n' + ec2_hostname + ':/var/lib/nova/images /var/lib/nova/images nfs defaults 0 0" >> /etc/fstab')
+
 
             # add to /etc/hosts file the hostname of nova-volume
             if (storage_hostname!='nova-controller'):
-                utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')           
+                utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')
             
             # iptables rule to get metadata from controller
 #            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')             
              
             # mount NFS remote
-            utils.execute('mount -a',None,None,False)
+#            utils.execute('mount -a',None,None,False)
             # enable libvirt-bin
             utils.execute('mv /etc/init/libvirt-bin.conf.disabled /etc/init/libvirt-bin.conf',None,None,False)
             # enable controller components
@@ -599,7 +642,7 @@ class NetworkConfig(Config):
                           'nodaemon',
                           'dhcpbridge_flagfile',
                           'dhcpbridge',
-                          'routing_source_ip',
+#                          'routing_source_ip',
                           'use_project_ca',
                           'flat_interface',
                           'public_interface'])
@@ -660,7 +703,7 @@ class NetworkConfig(Config):
             dhcpbridge = parameters['dhcpbridge']
 
             # Routing source IP
-            routing_source_ip = parameters['routing_source_ip']
+#            routing_source_ip = parameters['routing_source_ip']
             
             # Network interfaces
             public_interface = parameters['public_interface']
@@ -674,7 +717,8 @@ class NetworkConfig(Config):
             # enable CA certs per project
             use_project_ca = parameters['use_project_ca']
 
-            network = self._filler.populateNetworkNode(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size,dhcpbridge_flagfile,dhcpbridge,routing_source_ip, use_project_ca,public_interface,flat_interface)
+#            network = self._filler.populateNetworkNode(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size,dhcpbridge_flagfile,dhcpbridge,routing_source_ip, use_project_ca,public_interface,flat_interface)
+            network = self._filler.populateNetworkNode(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size,dhcpbridge_flagfile,dhcpbridge,use_project_ca,public_interface,flat_interface)
         else:
             # No file or configuration, create default XML configuration
             print "No data in config file!"
@@ -714,7 +758,7 @@ class NetworkConfig(Config):
         ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
         ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
         
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
@@ -753,16 +797,11 @@ class NetworkConfig(Config):
             # Install packages for component
             self.installPackages()
 
-            if (hostname!='nova-controller'):
-                utils.execute('hostname ' + hostname)
-                utils.execute('echo "' + hostname + '" > /etc/hostname')
-                utils.execute("sed -i 's/nova-controller/" + hostname + "/g' /etc/hosts")
-            else:
+            if (hostname=='nova-controller'):
                 utils.execute('echo "dummy" >> /etc/modules')
                 utils.execute('modprobe dummy')
                 utils.execute('ifconfig dummy0 0.0.0.0')
                 
-
             # nova.conf in bin linked to network info
             utils.execute('rm /var/lib/nova/bin/nova.conf',None,None,False)
             utils.execute('ln -s /etc/nova/nova-network.conf /var/lib/nova/bin/nova.conf')
@@ -920,7 +959,7 @@ class VolumeConfig(Config):
 
         use_local_volumes = self._filler.getPropertyValue(xmldoc, 'iscsi', 'use_local_volumes')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path')
+        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
         
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
@@ -951,11 +990,6 @@ class VolumeConfig(Config):
             # Install packages for component
             self.installPackages()
             
-            if (hostname!='nova-controller'):
-                utils.execute('hostname ' + hostname)
-                utils.execute('echo "' + hostname + '" > /etc/hostname')
-                utils.execute("sed -i 's/nova-controller/" + hostname + "/g' /etc/hosts")
-
             # LVM device to use as block storage
             lvm_device = self._filler.getPropertyValue(xmldoc,'iscsi','lvm_device')
             # enable controller components
@@ -993,6 +1027,12 @@ class Configurator(object):
         '''
         Constructor
         '''
+
+    def _changeHostname(self, hostname):
+        # Change first the hostname
+        utils.execute('hostname ' + hostname)
+        utils.execute('echo "' + hostname + '" > /etc/hostname')
+        utils.execute("sed -i 's/stackops-node/" + hostname + "/g' /etc/hosts")
 
     def _createCollectdConfigFile(self,configType,controllerIP):
         path = '/etc/collectd'
@@ -1092,63 +1132,63 @@ class Configurator(object):
         
         node = self._filler.createNode(cloud)
         return node
-    
-    # Parse XML and extract the component configuration chosen        
-    def importConfiguration(self,xml):
-        # Change hostname from XML information
-        hostname = xml.get_software().get_os().get_network().get_hostname()      
-        configType = 0
-        collectd_listener = 'localhost'
-        for component in xml.get_cloud().get_component():            
-            # Is a Controller?
-            if (component.get_name()=='controller'):
-                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
-                configType = configType | 1
-                self._controllerConfig.write(component)
-                result = self._controllerConfig.install(component,hostname)
-                if (len(result)>0):
-                    return result
-    
-            # Is a Compute?
-            if (component.get_name()=='compute'):
-                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
-                configType = configType | 8
-                self._computeConfig.write(component)
-                result = self._computeConfig.install(component,hostname)
-                if (len(result)>0):
-                    return result
 
-            # Is a Network?
-            if (component.get_name()=='network'):
-                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
-                configType = configType | 2
-                self._networkConfig.write(component)
-                result = self._networkConfig.install(component,hostname)
-                if (len(result)>0):
-                    return result
-            
-            # Is a Volume?
-            if (component.get_name()=='volume'):
-                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener')
-                configType = configType | 4
-                self._volumeConfig.write(component)
-                result = self._volumeConfig.install(component,hostname)
-                if (len(result)>0):
-                    return result
-        # Add the rest of the components here...
-        #
-        #
-        #
-        # configType = 15, single node
-        # configType = 7, dual node controller
-        # configType = 1, 2, 4 multinode
-        # configType = 8 dual o multinode (compute node)
+    def importConfiguration(self,xml):
+        """
+        Import the configuration from the XML definition file, and configure the selected nodes.
+        You must be root to execute this method
+        """
+        if getpass.getuser()=='root':
+            # Change hostname from XML information
+            hostname = xml.get_software().get_os().get_network().get_hostname()
+            # Change hostname
+            self._changeHostname(hostname)
+            configType = 0
+            for component in xml.get_cloud().get_component():
+                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener','localhost')
+                # Is a Controller?
+                if component.get_name()=='controller':
+                    configType |= 1
+                    self._controllerConfig.write(component)
+                    result = self._controllerConfig.install(component,hostname)
+                    if len(result)>0:
+                        return result
+                # Is a Compute?
+                if component.get_name()=='compute':
+                    configType |= 8
+                    self._computeConfig.write(component)
+                    result = self._computeConfig.install(component,hostname)
+                    if len(result)>0:
+                        return result
+                # Is a Network?
+                if component.get_name()=='network':
+                    configType |= 2
+                    self._networkConfig.write(component)
+                    result = self._networkConfig.install(component,hostname)
+                    if len(result)>0:
+                        return result
+                # Is a Volume?
+                if component.get_name()=='volume':
+                    configType |= 4
+                    self._volumeConfig.write(component)
+                    result = self._volumeConfig.install(component,hostname)
+                    if len(result)>0:
+                        return result
+            # Add the rest of the components here...
+            #
+            #
+            #
+            # configType = 15, single node
+            # configType = 7, dual node controller
+            # configType = 1, 2, 4 multinode
+            # configType = 8 dual o multinode (compute node)
         
-# Deprecated.
-#        self._createCollectdConfigFile(configType,collectd_listener)
-#        utils.execute('service collectd restart')
-        
-        return ''
+            # Deprecated.
+            #        self._createCollectdConfigFile(configType,collectd_listener)
+            #        utils.execute('service collectd restart')
+            return ''
+        else:
+            return 'You should run this program as super user.'
     
         
 

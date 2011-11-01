@@ -266,7 +266,7 @@ class ControllerConfig(Config):
         use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
 
         logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path')
+        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
 
         s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
         s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
@@ -527,7 +527,7 @@ class ComputeConfig(Config):
         libvirt_type = self._filler.getPropertyValue(xmldoc, 'libvirt', 'type')
 
         logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path')
+        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
 
         s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
         s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
@@ -552,6 +552,8 @@ class ComputeConfig(Config):
         glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
         image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
 
+        instances_path = self._filler.getPropertyValue(xmldoc, 'filesystem','instances_path','%s/instances' % state_path)
+
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
                       'nodaemon':nodaemon,
@@ -575,12 +577,52 @@ class ComputeConfig(Config):
                       'num_targets':num_targets,
                       'image_service':'%s' % image_service,
                       'glance_api_servers':'%s:%s' % (glance_hostname,glance_port),
-                      'my_ip':my_ip}
-
-
-
+                      'my_ip':my_ip,
+                      'instances_path':instances_path}
         self._writeFile(self._filename,parameters)
         return
+
+    def _configureFlatInterface(self, flat_interface, hostname):
+        if hostname != 'nova-controller':
+            # enable flat interface
+            utils.execute(
+                "sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % flat_interface)
+            utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
+
+    def _configureNFS(self, filesystem_type, instances_path, mount_parameters, mount_point):
+        if filesystem_type == 'nfs':
+            # configure NFS mount
+            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (mount_point, instances_path, mount_parameters))
+            # mount NFS remote
+            utils.execute('mount -a', None, None, False)
+
+    def _configureNovaVolumeHost(self, iscsi_ip_prefix, storage_hostname):
+        # add to /etc/hosts file the hostname of nova-volume
+        if (storage_hostname != 'nova-controller'):
+            utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')
+
+            # iptables rule to get metadata from controller
+        #            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')
+
+    def _configureInitServices(self):
+        # enable libvirt-bin
+        utils.execute('mv /etc/init/libvirt-bin.conf.disabled /etc/init/libvirt-bin.conf', None, None, False)
+        # enable controller components
+        utils.execute('mv /etc/init/nova-compute.conf.disabled /etc/init/nova-compute.conf', None, None, False)
+
+    def _restartServices(self):
+        # start libvirt components
+        utils.execute('stop libvirt-bin; start libvirt-bin')
+        # start compute components
+        utils.execute('stop nova-compute; start nova-compute')
+
+    def _configureGlusterFS(self, filesystem_type, instances_path, mount_parameters, mount_point):
+        if filesystem_type == 'glusterfs':
+            # configure NFS mount
+            utils.execute(
+                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (mount_point, instances_path, mount_parameters))
+            # mount NFS remote
+            utils.execute('mount -a', None, None, False)
 
     def install(self,xmldoc,hostname):
         result=''
@@ -589,41 +631,31 @@ class ComputeConfig(Config):
             storage_hostname = self._filler.getPropertyValue(xmldoc, 'iscsi', 'storage_hostname')
             iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
             ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
+            state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
+            instances_path = self._filler.getPropertyValue(xmldoc, 'filesystem','instances_path','%s/instances' % state_path)
+    #            filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','local')
+    #            mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point',None)
+    #            mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters',None)
+            filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','nfs')
+            mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point','192.168.10.198:/volumes/vol1/openstack-nfs-livemigration')
+            mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters','rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
 
-            # Install packages for component
-            self.installPackages()
+            self.installPackages() # Install packages for component
+            self._configureFlatInterface(flat_interface, hostname) # Configure Flat Interface
 
-            if (hostname!='nova-controller'):
-                # enable flat interface
-                utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")
-                utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
-                # configure NFS mount
-#                utils.execute('echo "\n' + ec2_hostname + ':/var/lib/nova/images /var/lib/nova/images nfs defaults 0 0" >> /etc/fstab')
+            self._configureNFS(filesystem_type, instances_path, mount_parameters, mount_point) # Configure NFS
+            self._configureGlusterFS(filesystem_type, instances_path, mount_parameters, mount_point) # Configure GlusterFS
+            self._configureNovaVolumeHost(iscsi_ip_prefix, storage_hostname) # Configure NovaVolume host name
 
-
-            # add to /etc/hosts file the hostname of nova-volume
-            if (storage_hostname!='nova-controller'):
-                utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')
-            
-            # iptables rule to get metadata from controller
-#            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')             
-             
-            # mount NFS remote
-#            utils.execute('mount -a',None,None,False)
-            # enable libvirt-bin
-            utils.execute('mv /etc/init/libvirt-bin.conf.disabled /etc/init/libvirt-bin.conf',None,None,False)
-            # enable controller components
-            utils.execute('mv /etc/init/nova-compute.conf.disabled /etc/init/nova-compute.conf',None,None,False)
-            # start libvirt components
-            utils.execute('stop libvirt-bin; start libvirt-bin')
-            # start compute components
-            utils.execute('stop nova-compute; start nova-compute')
+            self._configureInitServices()
+            self._restartServices()
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
 
     def installPackages(self):
         self.installPackagesCommon()
+        self._installDeb('nfs-common')
         self._installDeb('kvm')
         self._installDeb('iptables')
         self._installDeb('ebtables')
@@ -763,7 +795,7 @@ class NetworkConfig(Config):
         auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
         use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
         logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path')
+        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
         s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
         s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
         rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
@@ -969,7 +1001,7 @@ class VolumeConfig(Config):
         use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
 
         logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path')
+        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
 
         s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
         s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')

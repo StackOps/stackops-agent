@@ -4,6 +4,7 @@
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
 #
+#
 #       http://www.apache.org/licenses/LICENSE-2.0
 #
 #   Unless required by applicable law or agreed to in writing, software
@@ -125,6 +126,8 @@ class Config(object):
         self._installDeb('python-xattr')
         self._installDeb('python-glance')
         self._installDeb('python-lockfile')
+        self._installDeb('python-m2crypto')
+        self._installDeb('python-boto')
         self._installDeb('gawk')
         self._installDeb('curl')
         self._installDeb('socat')
@@ -250,7 +253,7 @@ class ControllerConfig(Config):
         network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
         fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
         network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
-#        flat_interface = self._filler.getPropertyValue(controller,'network_manager','flat_interface')
+#        flat_interface = self._filler.getPropertyValue(controller,'network_manager','flat_interface','eth1')
 
         mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
         mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
@@ -366,11 +369,7 @@ class ControllerConfig(Config):
                 # export credentials
                 utils.execute('/var/lib/nova/bin/nova-manage project zipfile admin admin /root/creds/nova.zip')
                 utils.execute('unzip /root/creds/nova.zip -d /root/creds')
-                # create a small network
-                utils.execute('/var/lib/nova/bin/nova-manage network create service ' + fixed_range + ' 1 255')
-                # floating network
-                utils.execute('/var/lib/nova/bin/nova-manage float create ' + floating_range)
-                
+
                 # enable controller components
                 utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf',None,None,False)
                 utils.execute('mv /etc/init/nova-api.conf.disabled /etc/init/nova-api.conf',None,None,False)
@@ -423,7 +422,10 @@ class ComputeConfig(Config):
                           'use_project_ca',
                           'flat_interface',
                           'iscsi_ip_prefix',
-                          'num_targets'])
+                          'image_service',
+                          'glance_api_servers',
+                          'num_targets',
+                          'my_ip'])
 
     _filename = "nova-compute.conf"
 
@@ -546,6 +548,10 @@ class ComputeConfig(Config):
             if iface['name']==management_interface:
                 my_ip = iface['address']
                 
+        glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', rabbit_host) # interim solution
+        glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
+        image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
+
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
                       'nodaemon':nodaemon,
@@ -566,8 +572,13 @@ class ComputeConfig(Config):
                       'use_project_ca':use_project_ca,
                       'flat_interface':flat_interface,
                       'iscsi_ip_prefix':iscsi_ip_prefix,
-                      'num_targets':num_targets}
-        
+                      'num_targets':num_targets,
+                      'image_service':'%s' % image_service,
+                      'glance_api_servers':'%s:%s' % (glance_hostname,glance_port),
+                      'my_ip':my_ip}
+
+
+
         self._writeFile(self._filename,parameters)
         return
 
@@ -642,10 +653,11 @@ class NetworkConfig(Config):
                           'nodaemon',
                           'dhcpbridge_flagfile',
                           'dhcpbridge',
-#                          'routing_source_ip',
+                          'routing_source_ip',
                           'use_project_ca',
                           'flat_interface',
-                          'public_interface'])
+                          'public_interface',
+                          'my_ip'])
 
     _filename = "nova-network.conf"
 
@@ -759,14 +771,20 @@ class NetworkConfig(Config):
         ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
         lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
-        
+        flat_network_bridge = self._filler.getPropertyValue(xmldoc,'network','bridge','br100')
+        management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        iface_list = self._operatingsystem.getNetworkConfiguration()
+        for iface in iface_list:
+            if iface['name']==management_interface:
+                my_ip = iface['address']
+
         parameters = {'lock_path':lock_path,
                       'verbose':verbose, 
                       'nodaemon':nodaemon,
 # NOVA-NETWORK SPECIFIC
                       'dhcpbridge':dhcpbridge,
                       'dhcpbridge_flagfile':dhcpbridge_flagfile, 
-#                      'routing_source_ip':routing_source_ip, 
+                      'routing_source_ip':routing_source_ip,
                       'network_manager':network_manager, 
                       'fixed_range':fixed_range, 
                       'network_size':network_size,
@@ -781,7 +799,9 @@ class NetworkConfig(Config):
                       'rabbit_host':rabbit_host, 
                       'ec2_host':ec2_hostname,
                       'ec2_dmz_host':ec2_dmz,
-                      'use_project_ca':use_project_ca}
+                      'use_project_ca':use_project_ca,
+                      'flat_network_bridge':flat_network_bridge,
+                      'my_ip':my_ip}
         
         self._writeFile(self._filename,parameters)
         return
@@ -792,6 +812,9 @@ class NetworkConfig(Config):
             flat_interface = self._filler.getPropertyValue(xmldoc,'interfaces','flat_interface')
             floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
             fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
+            flat_network_bridge = self._filler.getPropertyValue(xmldoc,'network','bridge','br100')
+            dns1 = self._filler.getPropertyValue(xmldoc,'network','dns1','8.8.8.8')
+            dns2 = self._filler.getPropertyValue(xmldoc,'network','dns2','8.8.4.4')
             ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
 
             # Install packages for component
@@ -806,15 +829,16 @@ class NetworkConfig(Config):
             utils.execute('rm /var/lib/nova/bin/nova.conf',None,None,False)
             utils.execute('ln -s /etc/nova/nova-network.conf /var/lib/nova/bin/nova.conf')
 
-            # floating network
-#            utils.execute('/var/lib/nova/bin/nova-manage float create ' + hostname + ' ' + floating_range)
-
             # enable flat interface
             utils.execute("sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig " + flat_interface + " 0.0.0.0/g' /etc/network/interfaces")
             utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
 
+            # create a small network
+            utils.execute('/var/lib/nova/bin/nova-manage network create service %s 1 255 --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (fixed_range,flat_network_bridge,flat_interface,dns1,dns2))
+            # floating network
+            utils.execute('/var/lib/nova/bin/nova-manage float create %s' % floating_range)
+
             # enable ipforwarding
-#            utils.execute('echo 1 | tee /proc/sys/net/ipv4/ip_forward')
             utils.execute("sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf")
             utils.execute("sysctl -p /etc/sysctl.conf")
 
@@ -822,15 +846,13 @@ class NetworkConfig(Config):
             utils.execute('mv /etc/init/nova-network.conf.disabled /etc/init/nova-network.conf',None,None,False)
             # start network components
             utils.execute('stop nova-network; start nova-network')
-#            if (hostname!='nova-controller'):
-                # iptables rule to get metadata from controller
-#                utils.execute('iptables -t nat -A  nova-network-POSTROUTING -s ' + fixed_range + ' -d ' + ec2_hostname + ' -j ACCEPT')             
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
 
     def installPackages(self):
         self.installPackagesCommon()
+        self._installDeb('bridge-utils')
         self._installDeb('dnsmasq-base')
         self._installDeb('iptables')
         self._installDeb('ebtables')

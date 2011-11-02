@@ -30,6 +30,7 @@ class Config(object):
     classdocs
     '''
 
+    _DEBUG = True
     _parameterList = set(['param1','param2','param3','param4'])
     _filename = "nofilename"
 
@@ -143,8 +144,6 @@ class ControllerConfig(Config):
     classdocs
     '''
 
-    _mysql_pass='nova'
-    
     _parameterList = set(['lock_path',
                          'verbose',
                          'nodaemon',
@@ -167,6 +166,8 @@ class ControllerConfig(Config):
                          'my_ip',
                          'scheduler_driver',
                          'max_cores',
+                         'max_gigabytes',
+                         'max_networks',
                          'ec2_port',
                          's3_port'])
 
@@ -240,83 +241,146 @@ class ControllerConfig(Config):
 # Write the parameters (if possible) from the xml file
     def write(self,xmldoc):
 
-        iface_list = self._operatingsystem.getNetworkConfiguration()
-        management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
-        my_ip='127.0.0.1'
-        for iface in iface_list:
-            if iface['name']==management_interface:
-                my_ip = iface['address']
+        self.iface_list = self._operatingsystem.getNetworkConfiguration()
+        self.management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        self.my_ip='127.0.0.1'
+        for iface in self.iface_list:
+            if iface['name']==self.management_interface:
+                self.my_ip = iface['address']
 
-        verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
-        nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
+        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
+        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
 
-        network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
-        fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
-        network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
-#        flat_interface = self._filler.getPropertyValue(controller,'network_manager','flat_interface','eth1')
+        self.network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
+        self.fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
+        self.network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
 
-        mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
-        mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
-        mysql_host = self._filler.getPropertyValue(xmldoc, 'database', 'host')
-        mysql_port = self._filler.getPropertyValue(xmldoc, 'database', 'port')
-        mysql_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema')
-        sql_connection = 'mysql://' + mysql_username + ':' + mysql_password + '@' + mysql_host + ':' + mysql_port + '/' + mysql_schema
+        self.mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
+        self.mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
+        self.mysql_host = self._filler.getPropertyValue(xmldoc, 'database', 'host')
+        self.mysql_port = self._filler.getPropertyValue(xmldoc, 'database', 'port')
+        self.mysql_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema')
+        self.sql_connection = 'mysql://%s:%s@%s:%s/%s' % (self.mysql_username, self.mysql_password, self.mysql_host, self.mysql_port, self.mysql_schema)
 
-        auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
-        use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
+        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
+        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
 
-        logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
+        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
+        self.state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
 
-        s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
-        s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
+        self.s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
+        self.s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
         
-        rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
+        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
 
-        ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
-        ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
+        self.ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
         
         # WARNING:THIS PARAMETERS SHOULD BE CONFIGURED FROM PROPERTY XML
-        glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', rabbit_host) # interim solution
-        glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
-        image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
+        self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', self.rabbit_host) # interim solution
+        self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
+        self.image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
         
-        max_cores = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_cores', 64)
-        ec2_port = self._filler.getPropertyValue(xmldoc, 'ec2', 'port', 8773)
-        s3_port = self._filler.getPropertyValue(xmldoc, 's3', 'port', 3333)
+        self.max_cores = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_cores', 16)
+        self.max_gigabytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_gigabytes', 2048) # 2TB
+        self.max_networks = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_networks', 1000)
+
+        self.ec2_port = self._filler.getPropertyValue(xmldoc, 'ec2', 'port', 8773)
+        self.s3_port = self._filler.getPropertyValue(xmldoc, 's3', 'port', 3333)
         
-        scheduler_driver  = self._filler.getPropertyValue(xmldoc, 'scheduler', 'driver', 'nova.scheduler.simple.SimpleScheduler')
-        flat_network_bridge = self._filler.getPropertyValue(xmldoc,'network','bridge','br100')
+        self.scheduler_driver  = self._filler.getPropertyValue(xmldoc, 'scheduler', 'driver', 'nova.scheduler.simple.SimpleScheduler')
+        self.flat_network_bridge = self._filler.getPropertyValue(xmldoc,'network','bridge','br100')
         
-        parameters = {'lock_path':lock_path,
-                      'verbose':verbose, 
-                      'nodaemon':nodaemon,
-                      'network_manager':network_manager, 
-                      'fixed_range':fixed_range, 
-                      'network_size':network_size,
-                      'sql_connection':sql_connection, 
-                      'auth_driver':auth_driver, 
-                      'logdir':logdir, 
-                      'state_path':state_path,
-                      's3_host':s3_host, 
-                      's3_dmz':s3_dmz, 
-                      'rabbit_host':rabbit_host, 
-                      'ec2_host':ec2_hostname,
-                      'ec2_dmz_host':ec2_dmz,
-                      'use_project_ca':use_project_ca,
-                      'flat_network_bridge':'%s' % flat_network_bridge,
-                      'image_service':'%s' % image_service,
-                      'glance_api_servers':'%s:%s' % (glance_hostname,glance_port),
-                      'my_ip':'%s' % my_ip,
-                      'scheduler_driver': '%s' % scheduler_driver,
-                      'max_cores':'%s' % max_cores,
-                      'ec2_port':'%s' % ec2_port,
-                      's3_port':'%s' % s3_port}
+        parameters = {'lock_path':self.lock_path,
+                      'verbose':self.verbose,
+                      'nodaemon':self.nodaemon,
+                      'network_manager':self.network_manager,
+                      'fixed_range':self.fixed_range,
+                      'network_size':self.network_size,
+                      'sql_connection':self.sql_connection,
+                      'auth_driver':self.auth_driver,
+                      'logdir':self.logdir,
+                      'state_path':self.state_path,
+                      's3_host':self.s3_host,
+                      's3_dmz':self.s3_dmz,
+                      'rabbit_host':self.rabbit_host,
+                      'ec2_host':self.ec2_hostname,
+                      'ec2_dmz_host':self.ec2_dmz,
+                      'use_project_ca':self.use_project_ca,
+                      'flat_network_bridge':self.flat_network_bridge,
+                      'image_service':self.image_service,
+                      'glance_api_servers':'%s:%s' % (self.glance_hostname,self.glance_port),
+                      'my_ip':'%s' % self.my_ip,
+                      'scheduler_driver': '%s' % self.scheduler_driver,
+                      'max_cores':'%s' % self.max_cores,
+                      'max_gigabytes':'%s' % self.max_gigabytes,
+                      'max_networks':'%s' % self.max_networks,
+                      'ec2_port':'%s' % self.ec2_port,
+                      's3_port':'%s' % self.s3_port}
         
         self._writeFile(self._filename,parameters)
         return
+
+    def _configureMySQL(self):
+        utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
+        utils.execute('service mysql restart')
+        utils.execute('''mysql -uroot -p''' + self.mysql_password + ''' -e "DROP DATABASE nova;"''', None, None, False)
+        utils.execute('''mysql -uroot -p''' + self.mysql_password + ''' -e "CREATE DATABASE nova;"''')
+        utils.execute(
+            '''mysql -uroot -p''' + self.mysql_password + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
+        utils.execute(
+            '''mysql -uroot -p''' + self.mysql_password + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
+
+    def _configAuths(self):
+        utils.execute('killall dnsmasq', None, None, False)
+        utils.execute('rm -fr /root/creds')
+        utils.execute('mkdir /root/creds')
+        # stackops
+        utils.execute('adduser nova --disabled-password --gecos ""', None, None, False)
+        # generate new certificates
+        utils.execute(
+            'rm /var/lib/nova/nova/CA/cacert.pem /var/lib/nova/nova/CA/openssl.cnf /var/lib/nova/nova/CA/crl.pem', None,
+            None, False)
+        utils.execute('cd /var/lib/nova/nova/CA; ./genrootca.sh')
+        # CA link to avoid issues with paths
+        utils.execute('rm /var/lib/nova/CA', None, None, False)
+        utils.execute('ln -s /var/lib/nova/nova/CA /var/lib/nova/CA')
+
+    def _createNovaDatabase(self):
+        # create the database
+        utils.execute('/var/lib/nova/bin/nova-manage db sync')
+        # create an admin user called 'admin'
+
+    def _createDefaultProject(self):
+        utils.execute('/var/lib/nova/bin/nova-manage user admin admin admin admin')
+        # create a project called 'admin' with project manager of 'admin'
+        utils.execute('/var/lib/nova/bin/nova-manage project create admin admin')
+        # export credentials
+        utils.execute('/var/lib/nova/bin/nova-manage project zipfile admin admin /root/creds/nova.zip')
+        utils.execute('unzip /root/creds/nova.zip -d /root/creds')
+
+    def _enableInitFiles(self):
+        # enable controller components
+        utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf', None,
+                      None, False)
+        utils.execute('mv /etc/init/nova-api.conf.disabled /etc/init/nova-api.conf', None, None, False)
+        utils.execute('mv /etc/init/nova-scheduler.conf.disabled /etc/init/nova-scheduler.conf', None, None, False)
+        utils.execute('mv /etc/init/nova-objectstore.conf.disabled /etc/init/nova-objectstore.conf', None, None, False)
+
+    def _restartServices(self):
+        # start controller components
+        utils.execute('stop nova-ajax-console-proxy; start nova-ajax-console-proxy')
+        utils.execute('stop nova-api; start nova-api')
+        utils.execute('stop nova-scheduler; start nova-scheduler')
+        utils.execute('stop nova-objectstore; start nova-objectstore')
+        utils.execute('glance-control all restart')
+
+    def _configureNovaManage(self):
+        # nova.conf in bin linked to controller info
+        utils.execute('rm /var/lib/nova/bin/nova.conf', None, None, False)
+        utils.execute('ln -s /etc/nova/nova-controller.conf /var/lib/nova/bin/nova.conf')
 
     def install(self,xmldoc,hostname):
         """
@@ -325,64 +389,15 @@ class ControllerConfig(Config):
         result =''
         try:
             if (getpass.getuser()=='root'):
-                mysql_pass = self._filler.getPropertyValue(xmldoc, 'database', 'password')
-                self._mysql_pass = mysql_pass
-                fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
-                floating_range = self._filler.getPropertyValue(xmldoc,'network','floating_range')
-
                 # Install packages for component
                 self.installPackages()
-                
-                utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
-                utils.execute('service mysql restart')
-        
-                utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "DROP DATABASE nova;"''', None,None,False)
-                utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "CREATE DATABASE nova;"''')
-                utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"''')
-                utils.execute('''mysql -uroot -p''' + mysql_pass + ''' -e "SET PASSWORD FOR 'root'@'%' = PASSWORD('nova');"''')
-                
-                utils.execute('killall dnsmasq',None,None,False)
-                utils.execute('rm -fr /root/creds')
-                utils.execute('mkdir /root/creds')
-                
-                # stackops
-                utils.execute('adduser nova --disabled-password --gecos ""',None,None,False)
-
-                # generate new certificates
-                utils.execute('rm /var/lib/nova/nova/CA/cacert.pem /var/lib/nova/nova/CA/openssl.cnf /var/lib/nova/nova/CA/crl.pem',None,None,False)
-                utils.execute('cd /var/lib/nova/nova/CA; ./genrootca.sh')
-                
-                # CA link to avoid issues with paths
-                utils.execute('rm /var/lib/nova/CA',None,None,False)
-                utils.execute('ln -s /var/lib/nova/nova/CA /var/lib/nova/CA')
-    
-                # nova.conf in bin linked to controller info
-                utils.execute('rm /var/lib/nova/bin/nova.conf',None,None,False)
-                utils.execute('ln -s /etc/nova/nova-controller.conf /var/lib/nova/bin/nova.conf')
-
-                # create the database        
-                utils.execute('/var/lib/nova/bin/nova-manage db sync')
-                # create an admin user called 'admin'
-                utils.execute('/var/lib/nova/bin/nova-manage user admin admin admin admin')
-                # create a project called 'admin' with project manager of 'admin'
-                utils.execute('/var/lib/nova/bin/nova-manage project create admin admin')
-                # export credentials
-                utils.execute('/var/lib/nova/bin/nova-manage project zipfile admin admin /root/creds/nova.zip')
-                utils.execute('unzip /root/creds/nova.zip -d /root/creds')
-
-                # enable controller components
-                utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf',None,None,False)
-                utils.execute('mv /etc/init/nova-api.conf.disabled /etc/init/nova-api.conf',None,None,False)
-                utils.execute('mv /etc/init/nova-scheduler.conf.disabled /etc/init/nova-scheduler.conf',None,None,False)
-                utils.execute('mv /etc/init/nova-objectstore.conf.disabled /etc/init/nova-objectstore.conf',None,None,False)
-        
-                # start controller components
-                utils.execute('stop nova-ajax-console-proxy; start nova-ajax-console-proxy')
-                utils.execute('stop nova-api; start nova-api')
-                utils.execute('stop nova-scheduler; start nova-scheduler')
-                utils.execute('stop nova-objectstore; start nova-objectstore')
-                utils.execute('glance-control all restart')
-
+                self._configureMySQL()
+                self._configAuths()
+                self._configureNovaManage()
+                self._createNovaDatabase()
+                self._createDefaultProject()
+                self._enableInitFiles()
+                self._restartServices()
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
@@ -392,8 +407,8 @@ class ControllerConfig(Config):
         self._installDeb('euca2ools')
         self._installDeb('cloud-utils')
         self._installDeb('glance')
-        utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + self._mysql_pass + ' | debconf-set-selections')
-        utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + self._mysql_pass + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password password ' + self.mysql_password + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.1 mysql-server/root_password_again password ' + self.mysql_password + ' | debconf-set-selections')
         utils.execute('echo mysql-server-5.1 mysql-server/start_on_boot boolean true')
         self._installDeb('mysql-server')
         self._installDeb('rabbitmq-server',False)
@@ -504,105 +519,111 @@ class ComputeConfig(Config):
 
 # Write the parameters (if possible) from the xml file
     def write(self,xmldoc):
-        verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
-        nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
+        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
+        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
 
-        network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
-        fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
-        network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
+        self.network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
+        self.fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
+        self.network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
 
-        flat_interface = self._filler.getPropertyValue(xmldoc,'interfaces','flat_interface')
+        self.flat_interface = self._filler.getPropertyValue(xmldoc,'interfaces','flat_interface')
 
-        mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
-        mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
-        mysql_host = self._filler.getPropertyValue(xmldoc, 'database', 'host')
-        mysql_port = self._filler.getPropertyValue(xmldoc, 'database', 'port')
-        mysql_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema')
-        sql_connection = 'mysql://' + mysql_username + ':' + mysql_password + '@' + mysql_host + ':' + mysql_port + '/' + mysql_schema
+        self.mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
+        self.mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
+        self.mysql_host = self._filler.getPropertyValue(xmldoc, 'database', 'host')
+        self.mysql_port = self._filler.getPropertyValue(xmldoc, 'database', 'port')
+        self.mysql_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema')
+        self.sql_connection = 'mysql://%s:%s@%s:%s/%s' % (self.mysql_username, self.mysql_password, self.mysql_host, self.mysql_port, self.mysql_schema)
 
-        auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
-        use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
+        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
+        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
 
 # NOVA-COMPUTE
-        libvirt_type = self._filler.getPropertyValue(xmldoc, 'libvirt', 'type')
+        self.libvirt_type = self._filler.getPropertyValue(xmldoc, 'libvirt', 'type')
 
-        logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
-        state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
+        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
+        self.state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
 
-        s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
-        s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
+        self.s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
+        self.s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
         
-        rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
+        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
 
-        ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
-        ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
+        self.ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
 
-        iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
-        num_targets = self._filler.getPropertyValue(xmldoc, 'iscsi', 'num_targets')
+        self.iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
+        self.num_targets = self._filler.getPropertyValue(xmldoc, 'iscsi', 'num_targets')
+        self.storage_hostname = self._filler.getPropertyValue(xmldoc, 'iscsi', 'storage_hostname', 'nova-volume')
 
-        lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
         
-        iface_list = self._operatingsystem.getNetworkConfiguration()
-        management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
-        for iface in iface_list:
-            if iface['name']==management_interface:
-                my_ip = iface['address']
+        self.iface_list = self._operatingsystem.getNetworkConfiguration()
+        self.management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        for iface in self.iface_list:
+            if iface['name']==self.management_interface:
+                self.my_ip = iface['address']
                 
-        glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', rabbit_host) # interim solution
-        glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
-        image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
+        self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', self.rabbit_host) # interim solution
+        self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
+        self.image_service  = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service', 'nova.image.glance.GlanceImageService')
 
-        instances_path = self._filler.getPropertyValue(xmldoc, 'filesystem','instances_path','%s/instances' % state_path)
+        self.instances_path = self._filler.getPropertyValue(xmldoc, 'filesystem','instances_path','%s/instances' % self.state_path)
+        if self._DEBUG:
+            self.filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','nfs')
+            self.mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point','192.168.10.198:/volumes/vol1/openstack-nfs-livemigration')
+            self.mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters','rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
+        else:
+            self.filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','local')
+            self.mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point',None)
+            self.mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters',None)
 
-        parameters = {'lock_path':lock_path,
-                      'verbose':verbose, 
-                      'nodaemon':nodaemon,
-                      'network_manager':network_manager, 
-                      'fixed_range':fixed_range, 
-                      'network_size':network_size,
-                      'sql_connection':sql_connection, 
-                      'auth_driver':auth_driver, 
+        parameters = {'lock_path':self.lock_path,
+                      'verbose':self.verbose,
+                      'nodaemon':self.nodaemon,
+                      'network_manager':self.network_manager,
+                      'fixed_range':self.fixed_range,
+                      'network_size':self.network_size,
+                      'sql_connection':self.sql_connection,
+                      'auth_driver':self.auth_driver,
 # NOVA-COMPUTE SPECIFIC
-                      'libvirt_type':libvirt_type, 
-                      'logdir':logdir, 
-                      'state_path':state_path,                       
-                      's3_host':s3_host, 
-                      's3_dmz':s3_dmz, 
-                      'rabbit_host':rabbit_host, 
-                      'ec2_host':ec2_hostname,
-                      'ec2_dmz_host':ec2_dmz,
-                      'use_project_ca':use_project_ca,
-                      'flat_interface':flat_interface,
-                      'iscsi_ip_prefix':iscsi_ip_prefix,
-                      'num_targets':num_targets,
-                      'image_service':'%s' % image_service,
-                      'glance_api_servers':'%s:%s' % (glance_hostname,glance_port),
-                      'my_ip':my_ip,
-                      'instances_path':instances_path}
+                      'libvirt_type':self.libvirt_type,
+                      'logdir':self.logdir,
+                      'state_path':self.state_path,
+                      's3_host':self.s3_host,
+                      's3_dmz':self.s3_dmz,
+                      'rabbit_host':self.rabbit_host,
+                      'ec2_host':self.ec2_hostname,
+                      'ec2_dmz_host':self.ec2_dmz,
+                      'use_project_ca':self.use_project_ca,
+                      'flat_interface':self.flat_interface,
+                      'iscsi_ip_prefix':self.iscsi_ip_prefix,
+                      'num_targets':self.num_targets,
+                      'image_service':'%s' % self.image_service,
+                      'glance_api_servers':'%s:%s' % (self.glance_hostname,self.glance_port),
+                      'my_ip':self.my_ip,
+                      'instances_path':self.instances_path}
         self._writeFile(self._filename,parameters)
         return
 
-    def _configureFlatInterface(self, flat_interface, hostname):
+    def _configureFlatInterface(self,hostname):
         if hostname != 'nova-controller':
             # enable flat interface
             utils.execute(
-                "sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % flat_interface)
-            utils.execute('ifconfig ' + flat_interface + ' 0.0.0.0')
+                "sed -i 's/stackops.org/stackops.org\\n\\tup ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % self.flat_interface)
+            utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
 
-    def _configureNFS(self, filesystem_type, instances_path, mount_parameters, mount_point):
-        if filesystem_type == 'nfs':
+    def _configureNFS(self):
+        if self.filesystem_type == 'nfs':
             # configure NFS mount
-            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (mount_point, instances_path, mount_parameters))
+            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (self.mount_point, self.instances_path, self.mount_parameters))
             # mount NFS remote
             utils.execute('mount -a', None, None, False)
 
-    def _configureNovaVolumeHost(self, iscsi_ip_prefix, storage_hostname):
+    def _configureNovaVolumeHost(self):
         # add to /etc/hosts file the hostname of nova-volume
-        if (storage_hostname != 'nova-controller'):
-            utils.execute('echo "\n' + iscsi_ip_prefix + '\t' + storage_hostname + '" >> /etc/hosts')
-
-            # iptables rule to get metadata from controller
-        #            utils.execute('iptables -t nat -A PREROUTING -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination ' + ec2_hostname + ':8773')
+        if (self.storage_hostname != 'nova-controller'):
+            utils.execute('echo "\n' + self.iscsi_ip_prefix + '\t' + self.storage_hostname + '" >> /etc/hosts')
 
     def _configureInitServices(self):
         # enable libvirt-bin
@@ -616,36 +637,23 @@ class ComputeConfig(Config):
         # start compute components
         utils.execute('stop nova-compute; start nova-compute')
 
-    def _configureGlusterFS(self, filesystem_type, instances_path, mount_parameters, mount_point):
-        if filesystem_type == 'glusterfs':
+    def _configureGlusterFS(self):
+        if self.filesystem_type == 'glusterfs':
             # configure NFS mount
             utils.execute(
-                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (mount_point, instances_path, mount_parameters))
+                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (self.mount_point, self.instances_path, self.mount_parameters))
             # mount NFS remote
             utils.execute('mount -a', None, None, False)
 
     def install(self,xmldoc,hostname):
         result=''
         try:
-            flat_interface = self._filler.getPropertyValue(xmldoc,'interfaces','flat_interface')
-            storage_hostname = self._filler.getPropertyValue(xmldoc, 'iscsi', 'storage_hostname')
-            iscsi_ip_prefix = self._filler.getPropertyValue(xmldoc, 'iscsi', 'ip_prefix')
-            ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
-            state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
-            instances_path = self._filler.getPropertyValue(xmldoc, 'filesystem','instances_path','%s/instances' % state_path)
-    #            filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','local')
-    #            mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point',None)
-    #            mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters',None)
-            filesystem_type = self._filler.getPropertyValue(xmldoc, 'filesystem','type','nfs')
-            mount_point = self._filler.getPropertyValue(xmldoc,'filesystem','mount_point','192.168.10.198:/volumes/vol1/openstack-nfs-livemigration')
-            mount_parameters = self._filler.getPropertyValue(xmldoc,'filesystem','mount_parameters','rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
-
             self.installPackages() # Install packages for component
-            self._configureFlatInterface(flat_interface, hostname) # Configure Flat Interface
+            self._configureFlatInterface(hostname) # Configure Flat Interface
 
-            self._configureNFS(filesystem_type, instances_path, mount_parameters, mount_point) # Configure NFS
-            self._configureGlusterFS(filesystem_type, instances_path, mount_parameters, mount_point) # Configure GlusterFS
-            self._configureNovaVolumeHost(iscsi_ip_prefix, storage_hostname) # Configure NovaVolume host name
+            self._configureNFS() # Configure NFS
+            self._configureGlusterFS() # Configure GlusterFS
+            self._configureNovaVolumeHost() # Configure NovaVolume host name
 
             self._configureInitServices()
             self._restartServices()
@@ -1066,6 +1074,206 @@ class VolumeConfig(Config):
         self._installDeb('lvm2')
         self._installDeb('iscsitarget')
 
+class NexentaVolumeConfig(Config):
+    '''
+    classdocs
+    '''
+
+    _parameterList = set(['lock_path',
+                          'network_size',
+                          'verbose',
+                          'rabbit_host',
+                          'fixed_range',
+                          'sql_connection',
+                          'ec2_dmz_host',
+                          'state_path',
+                          'auth_driver',
+                          'network_manager',
+                          'ec2_host',
+                          's3_dmz',
+                          'logdir',
+                          's3_host',
+                          'nodaemon',
+                          'use_project_ca',
+                          'my_ip'
+                          'use_local_volumes',
+                          'volume_driver',
+                          'volume_group',
+                          'san_thin_provision',
+                          'san_ip',
+                          'san_login',
+                          'san_password',
+                          'host'])
+
+    _filename = "nova-volume.conf"
+
+    def __init__(self):
+        '''
+        Constructor
+        '''
+# Check if there is an existing configuration file for the Controller
+    def checkInstallation(self):
+        check = super(NexentaVolumeConfig, self).checkInstallation()
+        return check
+
+# Read the parameters (if possible) and creates the config XML
+    def read(self):
+        volume = None
+        if (self.checkInstallation()):
+            # A configuration exists, read it and populate XML
+            parameters = self._readFile(self._filename)
+
+            # generic parameters
+            verbose = parameters['verbose']
+            nodaemon = parameters['nodaemon']
+
+            # Authentication driver
+            auth_driver = parameters['auth_driver']
+
+            # log directory
+            logdir = parameters['logdir']
+
+            # state directory type
+            state_path = parameters['state_path']
+
+            # mysql database
+            conn_params = self._parseConnectionString(parameters['sql_connection'])
+            mysql_username = conn_params['user']
+            mysql_password = conn_params['password']
+            mysql_hostname = conn_params['host']
+            mysql_port = conn_params['port']
+            mysql_schema = conn_params['schema']
+
+            # S3 Images service host
+            s3_host = parameters['s3_host']
+            s3_dmz = parameters['s3_dmz']
+
+            # RabbitMQ broker host
+            rabbit_host = parameters['rabbit_host']
+
+            # EC2 API Listen port
+            ec2_host = parameters['ec2_host']
+            ec2_dmz_host = parameters['ec2_dmz_host']
+
+            # network configuration
+            network_manager = parameters['network_manager']
+            network_fixed_range = parameters['fixed_range']
+            network_size = parameters['network_size']
+
+            # enable CA certs per project
+            use_project_ca = parameters['use_project_ca']
+
+            # iscsi parameters
+            use_local_volumes = parameters['use_local_volumes']
+
+            volume = self._filler.populateVolume(verbose, nodaemon, mysql_username, mysql_password, mysql_hostname, mysql_port, mysql_schema, auth_driver, logdir, state_path, s3_host, s3_dmz, rabbit_host, ec2_host, ec2_dmz_host, network_manager, network_fixed_range, network_size,use_project_ca, use_local_volumes)
+        else:
+            # No file or configuration, create default XML configuration
+            print "No data in config file!"
+            volume = None
+
+        return volume
+
+# Write the parameters (if possible) from the xml file
+    def write(self,xmldoc):
+        self.iface_list = self._operatingsystem.getNetworkConfiguration()
+        self.management_interface = self._filler.getPropertyValue(xmldoc,'interfaces','management_interface','eth0')
+        self.my_ip='127.0.0.1'
+        for iface in self.iface_list:
+            if iface['name']==self.management_interface:
+                self.my_ip = iface['address']
+
+        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
+        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
+
+        self.network_manager = self._filler.getPropertyValue(xmldoc,'network','type')
+        self.fixed_range = self._filler.getPropertyValue(xmldoc,'network','fixed_range')
+        self.network_size = self._filler.getPropertyValue(xmldoc,'network','network_size')
+
+        self.mysql_username = self._filler.getPropertyValue(xmldoc, 'database', 'username')
+        self.mysql_password = self._filler.getPropertyValue(xmldoc, 'database', 'password')
+        self.mysql_host = self._filler.getPropertyValue(xmldoc, 'database', 'host')
+        self.mysql_port = self._filler.getPropertyValue(xmldoc, 'database', 'port')
+        self.mysql_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema')
+        self.sql_connection = 'mysql://%s:%s@%s:%s/%s' % (self.mysql_username, self.mysql_password, self.mysql_host, self.mysql_port, self.mysql_schema)
+
+        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
+        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
+
+        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
+        self.state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path','/var/lib/nova')
+
+        self.s3_host = self._filler.getPropertyValue(xmldoc, 's3', 'hostname')
+        self.s3_dmz = self._filler.getPropertyValue(xmldoc, 's3', 'dmz')
+
+        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
+
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname')
+        self.ec2_dmz = self._filler.getPropertyValue(xmldoc, 'ec2', 'dmz')
+
+        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+
+        self.use_local_volumes = self._filler.getPropertyValue(xmldoc, 'san', 'use_local_volumes','false')
+        self.volume_driver = self._filler.getPropertyValue(xmldoc, 'san', 'volume_driver','nova.volume.san.NexentaISCSIDriver')
+        self.volume_group = self._filler.getPropertyValue(xmldoc, 'san', 'volume_group','vol1')
+        self.san_thin_provision = self._filler.getPropertyValue(xmldoc, 'san', 'thin_provision','true')
+        self.san_host = self._filler.getPropertyValue(xmldoc, 'san', 'host','192.168.10.198')
+        self.san_login = self._filler.getPropertyValue(xmldoc, 'san', 'login','stackops')
+        self.san_password = self._filler.getPropertyValue(xmldoc, 'san', 'password','stackops')
+        self.nova_volume_host = self._filler.getPropertyValue(xmldoc, 'san', 'nova_volume_host','nexenta-san')
+
+        parameters = {'lock_path':self.lock_path,
+                      'verbose':self.verbose,
+                      'nodaemon':self.nodaemon,
+                      'network_manager':self.network_manager,
+                      'fixed_range':self.fixed_range,
+                      'network_size':self.network_size,
+                      'sql_connection':self.sql_connection,
+                      'auth_driver':self.auth_driver,
+                      'logdir':self.logdir,
+                      'state_path':self.state_path,
+                      's3_host':self.s3_host,
+                      's3_dmz':self.s3_dmz,
+                      'rabbit_host':self.rabbit_host,
+                      'ec2_host':self.ec2_hostname,
+                      'ec2_dmz_host':self.ec2_dmz,
+                      'use_project_ca':self.use_project_ca,
+                      'my_ip':self.my_ip,
+                      'use_local_volumes':self.use_local_volumes,
+                      'volume_driver':self.volume_driver,
+                      'volume_group':self.volume_group,
+                      'san_thin_provision':self.san_thin_provision,
+                      'san_ip':self.san_host,
+                      'san_login':self.san_login,
+                      'san_password':self.san_password,
+                      'host':self.nova_volume_host}
+
+        self._writeFile(self._filename,parameters)
+        return
+
+    def _enableInitFiles(self):
+        utils.execute('mv /etc/init/nova-volume.conf.disabled /etc/init/nova-volume.conf', None, None, False)
+
+    def _restartServices(self):
+        utils.execute('stop nova-volume; start nova-volume')
+
+    def install(self,xmldoc,hostname):
+        result=''
+        try:
+            # Install packages for component
+            self.installPackages()
+            # enable controller components
+            self._enableInitFiles()
+            # start compute components
+            self._restartServices()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('python-paramiko')
+
 class Configurator(object):
     '''
     classdocs
@@ -1075,6 +1283,7 @@ class Configurator(object):
     _computeConfig = ComputeConfig()
     _networkConfig = NetworkConfig()
     _volumeConfig = VolumeConfig()
+    _nexentaVolumeConfig = NexentaVolumeConfig()
     _filler = install.Filler();
 
     def __init__(self):
@@ -1207,6 +1416,12 @@ class Configurator(object):
                     result = self._controllerConfig.install(component,hostname)
                     if len(result)>0:
                         return result
+                    configure_nexenta= self._filler.getPropertyValue(component, 'san', 'use_local_volumes',None)
+                    if configure_nexenta!=None or self._controllerConfig._DEBUG:
+                        self._nexentaVolumeConfig.write(component)
+                        result = self._nexentaVolumeConfig.install(component,hostname)
+                        if len(result)>0:
+                            return result
                 # Is a Compute?
                 if component.get_name()=='compute':
                     configType |= 8
@@ -1222,12 +1437,12 @@ class Configurator(object):
                     if len(result)>0:
                         return result
                 # Is a Volume?
-                if component.get_name()=='volume':
-                    configType |= 4
-                    self._volumeConfig.write(component)
-                    result = self._volumeConfig.install(component,hostname)
-                    if len(result)>0:
-                        return result
+#                if component.get_name()=='volume':
+#                    configType |= 4
+#                    self._volumeConfig.write(component)
+#                    result = self._volumeConfig.install(component,hostname)
+#                    if len(result)>0:
+#                        return result
             # Add the rest of the components here...
             #
             #

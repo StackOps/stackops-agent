@@ -35,7 +35,8 @@ import configuration
 
 import utils
 
-_target = 'installer.stackops.org'
+#_target = 'installer.stackops.org'
+_target = 'installer.qa.stackops.org/stackops'
 _port = 8888
 
 def terminate():
@@ -53,26 +54,25 @@ def importConfiguration(configurator, str):
 
 def showConfigDone():
     str = '<html>'
-    str = str + '<head>'
-    str = str + '<title>Welcome to StackOps Smart Installer</title>'
-    str = str + '</head>'
-    str = str + '<body>'
-    str = str + 'Installation completed. Node ready. Please wait...<br/>'
-    str = str + '<script type="text/javascript">'
-#    str = str + 'window.location = "http://docs.stackops.org/display/documentation/Operating+Openstack+with+Stackops+Distro"'
-    str = str + 'window.location = "http://' + _target + '/install/cloudlist"'
-    str = str + '</script>'
-    str = str + '</html>'
+    str += '<head>'
+    str += '<title>Welcome to StackOps Smart Installer</title>'
+    str += '</head>'
+    str += '<body>'
+    str += 'Installation completed. Node ready. Please wait...<br/>'
+    str += '<script type="text/javascript">'
+    str += 'window.location = "http://' + _target + '/install/cloudlist"'
+    str += '</script>'
+    str += '</html>'
     return str
 
 def showError(txt):
     str = '<html>'
-    str = str + '<head>'
-    str = str + '<title>ERROR!</title>'
-    str = str + '</head>'
-    str = str + '<body>'
-    str = str + txt.replace("\n","<br />\n")
-    str = str + '</html>'
+    str += '<head>'
+    str += '<title>ERROR!</title>'
+    str += '</head>'
+    str += '<body>'
+    str += txt.replace("\n","<br />\n")
+    str += '</html>'
     return str
 
 #main server resource
@@ -85,24 +85,24 @@ class Root(resource.Resource):
         output = StringIO.StringIO()
         xml.export(output,0)
         str = '<html>'
-        str = str + '<head>'
-        str = str + '<title>Welcome to StackOps Smart Installer</title>'
-        str = str + '</head>'
-        str = str + '<body>'
-        str = str + 'Redirecting to StackOps Smart Installer Assistant...<br/>'
-        str = str + '<div style="display:none">'
-        str = str + '<form name="autoform" id="autoform" action="http://' + _target + '/entrypoint" method="post" >'
-        str = str + '<textarea name="xml" id="xml">'
-        str = str + output.getvalue()
-        str = str + '</textarea>'
-        str = str + '<input type="text" name="nodeaddress" id="nodeaddress" value=""/>'
-        str = str + '</div>'
-        str = str + '</body>'
-        str = str + '<script type="text/javascript">'
-        str = str + 'document.getElementById("nodeaddress").value=document.location.href;'
-        str = str + 'document.autoform.submit();'
-        str = str + '</script>'    
-        str = str + '</html>'
+        str += '<head>'
+        str += '<title>Welcome to StackOps Smart Installer</title>'
+        str += '</head>'
+        str += '<body>'
+        str += 'Redirecting to StackOps Smart Installer Assistant...<br/>'
+        str += '<div style="display:none">'
+        str += '<form name="autoform" id="autoform" action="http://' + _target + '/entrypoint" method="post" >'
+        str += '<textarea name="xml" id="xml">'
+        str += output.getvalue()
+        str += '</textarea>'
+        str += '<input type="text" name="nodeaddress" id="nodeaddress" value=""/>'
+        str += '</div>'
+        str += '</body>'
+        str += '<script type="text/javascript">'
+        str += 'document.getElementById("nodeaddress").value=document.location.href;'
+        str += 'document.autoform.submit();'
+        str += '</script>'
+        str += '</html>'
         return str
 
     def render_POST(self, request):

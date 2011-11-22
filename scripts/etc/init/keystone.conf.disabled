@@ -1,0 +1,29 @@
+#   Copyright 2011 STACKOPS TECHNOLOGIES S.L.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# keystone service
+
+description     "keystone"
+author          "Diego Parrilla <diego.parrilla@stackops.com>"
+
+start on (net-device-up IFACE!=lo and local-filesystems and started mysql)
+stop on runlevel [016]
+
+env KEYSTONE_DIR=/var/lib/keystone/bin
+env KEYSTONE_APP=keystone
+env KEYSTONE_CONF=/etc/keystone/keystone.conf
+
+chdir /var/lib/keystone
+
+exec su -c "$KEYSTONE_DIR/$KEYSTONE_APP --config-file=$KEYSTONE_CONF" 2>&1

@@ -27,6 +27,8 @@ cd build
 
 cp -fR ../scripts/* .
 cp -fR ../src/*.py var/lib/stackops/
+cp -fR ../src/*.conf var/lib/stackops/
+cp -fR ../src/django.wsgi var/lib/stackops/
 chmod 700 var/lib/stackops/*.sh
 
 tar cvf ../dist/stackops-agent-$VERSION.tar *

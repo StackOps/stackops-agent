@@ -53,9 +53,9 @@ class Flags():
         try:
             if not os.path.exists(path):
                 os.makedirs(path)
-        except Exception:
+        except Exception as e:
             print "Error creating directory " + path 
-            raise Exception("Error creating directory " + path)
+            raise Exception("Error creating directory " + path, e)
 
         try:    
             f  = open(path + '/' + filename,'w')
@@ -72,6 +72,6 @@ class Flags():
                         str = str
                 f.write('--' + str + '\n')
             f.close()
-        except Exception:
+        except Exception as e:
             print "Error writing file. " + path + '/' + filename
-            raise Exception("Error writing file. " + path + '/' + filename)
+            raise Exception("Error writing file. " + path + '/' + filename, e)

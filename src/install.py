@@ -27,7 +27,8 @@ import utils
 import StackOps
 import StackOpssubs
 
-from socket import gethostname; 
+from socket import gethostname;
+import re
 
 
 class Machine:
@@ -183,18 +184,38 @@ class OperatingSystem(object):
                     if (params[len(params)-1] == 'dhcp'):
                         dev['dhcp'] = "true"
                     if (params[len(params)-1] == 'static'):
-                        dev['dhcp'] = "false" 
+                        dev['dhcp'] = "false"
                     if (params[0] == 'address'):
                         dev['address'] =  params[1]
                     if (params[0] == 'netmask'):
                         dev['netmask'] =  params[1]
                     if (params[0] == 'gateway'):
-                        dev['gateway'] =  params[1]                    
+                        dev['gateway'] =  params[1]
                     if (params[0] == 'bridge_ports'):
                         dev['virtual'] = "true"
+                if dev['dhcp'] == 'true':
+                    dev.update(self.getDhcpInfo(dev['name']))
             if (len(dev)>0):
                 inf.append(dev)
         return inf
+
+    def getDhcpInfo(self, device):
+        info = {'address': 'none', 'netmask':'none', 'gateway':'none' }
+        mnt = commands.getstatusoutput('LC_ALL=c ifconfig '+device)
+        if (mnt[0]>0):
+            raise Exception(mnt[1])
+        match = re.search(r'inet addr:(\S+).*mask:(\S+)', mnt[1], re.I)
+        if match:
+            info['address'] = match.group(1)
+            info['netmask'] = match.group(2)
+        mnt = commands.getstatusoutput('route -n ')
+        if (mnt[0]>0):
+            raise Exception(mnt[1])
+        match = re.search(r'^0.0.0.0\s+(\S+).*'+re.escape(device),
+                          mnt[1], re.I|re.M)
+        if match:
+            info['gateway'] = match.group(1)
+        return info
 
 class Filler(object):
     '''

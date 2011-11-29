@@ -23,7 +23,7 @@ import threading
 import time
 import os
 import urllib
-from twisted.internet import reactor
+from twisted.internet import reactor, threads
 from twisted.web import server, resource
 from twisted.web.static import File
 from twisted.python import log
@@ -34,6 +34,8 @@ import StackOpssubs
 import configuration
 
 import utils
+
+import status
 
 #_target = 'installer.stackops.org'
 _target = 'installer.qa.stackops.org/stackops'
@@ -75,12 +77,25 @@ def showError(txt):
     str += '</html>'
     return str
 
+
+class ThreadedResource(resource.Resource):
+
+    def render_POST(self, request):
+        d = threads.deferToThread(self.POST, request)
+        d.addCallback(lambda s: (request.write(s), request.finish()))
+        return server.NOT_DONE_YET
+
+    def render_GET(self, request):
+        d = threads.deferToThread(self.GET, request)
+        d.addCallback(lambda s: (request.write(s), request.finish()))
+        return server.NOT_DONE_YET
+
 #main server resource
-class Root(resource.Resource):
+class Root(ThreadedResource):
 
     _configurator = configuration.Configurator()
         
-    def render_GET(self, request):
+    def GET(self, request):
         xml = self._configurator.detectConfiguration()
         output = StringIO.StringIO()
         xml.export(output,0)
@@ -105,14 +120,19 @@ class Root(resource.Resource):
         str += '</html>'
         return str
 
-    def render_POST(self, request):
+    def POST(self, request):
         try:
+            with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+                f.write('CONFIGURING')
             str = request.args['sysinfo'][0]
             log.msg(str)
             result = importConfiguration(self._configurator,str)
             if len(result)==0:
+                with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+                    f.write('READY')
                 return showConfigDone()
             else:
+                os.remove('/etc/nova/CONFIG_STATUS')
                 request.setResponseCode(500)
                 return showError(result)
         except:
@@ -129,11 +149,11 @@ class Root(resource.Resource):
             else:
                 return PageNotFoundError()
 
-class GetConfiguration(resource.Resource):
+class GetConfiguration(ThreadedResource):
 
     _configurator = configuration.Configurator()
     
-    def render_GET(self, request):
+    def GET(self, request):
         try:
             log.msg('Request:')
             xml = self._configurator.detectConfiguration()
@@ -145,7 +165,7 @@ class GetConfiguration(resource.Resource):
             request.setResponseCode(500)
             return er
 
-    def render_POST(self, request):
+    def POST(self, request):
         try:
             str = request.content.read()
             log.msg(str)
@@ -160,9 +180,9 @@ class GetConfiguration(resource.Resource):
             request.setResponseCode(500)
             return er
 
-class GetTermination(resource.Resource):
+class GetTermination(ThreadedResource):
 
-    def render_GET(self, request):
+    def GET(self, request):
         try:
             log.msg('Request: TERMINATION')
             t = threading.Thread(target=terminate)
@@ -173,18 +193,24 @@ class GetTermination(resource.Resource):
             request.setResponseCode(500)
             return er
 
-    def render_POST(self, request):
+    def POST(self, request):
         self.render_GET(request)
         
-class PageNotFoundError(resource.Resource):
+class PageNotFoundError(ThreadedResource):
 
-    def render_GET(self, request):
+    def GET(self, request):
         return 'Page Not Found!'
+
+class GetStatusAPI(ThreadedResource):
+
+    def GET(self, request):
+        return status.get_xml_status()
 
 #to make the process of adding new views less static
 VIEWS = {
     'configuration': GetConfiguration(),
     'termination': GetTermination(),
+    'status': GetStatusAPI(),
 }
 
 if __name__ == '__main__':
@@ -198,6 +224,6 @@ if __name__ == '__main__':
         root.putChild(viewName, className)
     log.startLogging(sys.stdout)
     log.msg('Starting server: %s' %str(datetime.now()))
-    server = server.Site(root)
-    reactor.listenTCP(_port, server)
+    site = server.Site(root)
+    reactor.listenTCP(_port, site)
     reactor.run()

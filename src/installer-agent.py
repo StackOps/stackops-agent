@@ -167,12 +167,17 @@ class GetConfiguration(ThreadedResource):
 
     def POST(self, request):
         try:
+            with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+                f.write('CONFIGURING')
             str = request.content.read()
             log.msg(str)
             result = importConfiguration(self._configurator,str)
             if len(result)==0:
+                with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+                    f.write('READY')
                 return showConfigDone()
             else:
+                os.remove('/etc/nova/CONFIG_STATUS')
                 request.setResponseCode(500)
                 return showError(result)
         except:
@@ -204,6 +209,7 @@ class PageNotFoundError(ThreadedResource):
 class GetStatusAPI(ThreadedResource):
 
     def GET(self, request):
+        request.setHeader('content-type', 'text/xml')
         return status.get_xml_status()
 
 #to make the process of adding new views less static

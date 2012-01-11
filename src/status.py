@@ -24,6 +24,7 @@ try:
 except:
     from StringIO import StringIO
 from xml.sax.saxutils import escape, quoteattr
+import re
 
 from StackOps import property, service, component, cloud, node
 
@@ -31,7 +32,8 @@ def service_running(service_name):
     return 'start/running' in getoutput('status '+service_name)
 
 def rabbitmq_running():
-    return 'running' in getoutput('invoke-rc.d rabbitmq-server status')
+    out = getoutput('invoke-rc.d rabbitmq-server status')
+    return bool(re.search(r'^Node .+ with Pid .+: running', out, re.M))
 
 test_commands = { # Format: service_name: (test_func, param1, param2, ....)
     'nova-api':         (service_running, 'nova-api'),

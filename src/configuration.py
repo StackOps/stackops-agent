@@ -77,6 +77,7 @@ class Config(VanillaConfig):
     '''
 
     def installPackagesCommon(self):
+        utils.execute('sed -i /lucid-updates/d /etc/apt/sources.list')
         utils.execute('apt-get -y update')
         self._installDeb('python-software-properties')
         self._installDeb('python-sqlalchemy')

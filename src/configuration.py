@@ -1100,7 +1100,7 @@ class Configurator(object):
 
     def _configureNTPClient(self, ntpHost):
         # Change default ntp server to client choice
-        utils.execute("sed -i 's/#server ntp.ubuntu.com/" + ntpHost + "/g' /etc/ntp.conf")
+        utils.execute("sed -i 's/server ntp.ubuntu.com/server " + ntpHost + "/g' /etc/ntp.conf")
         utils.execute("service ntp stop; ntpdate -u %s; service ntp start" % ntpHost, check_exit_code=False)
 
     def _createCollectdConfigFile(self, configType, controllerIP):

@@ -59,11 +59,17 @@ def get_node_services():
         services.append('nova-volume')
     if exists('/etc/nova/nova-compute.conf'):
         services.extend(('libvirt', 'nova-compute'))
-    if 'installed' in getoutput("dpkg-query -W -f='${status}' mysql-server"):
+    if package_installed('mysql-server'):
         services.append('mysql')
-    if 'installed' in getoutput("dpkg-query -W -f='${status}' rabbitmq-server"):
+    if package_installed('rabbitmq-server'):
         services.append('rabbitmq')
     return services
+
+def package_installed(packagename):
+    output = getoutput("dpkg-query -W -f='${status}' " + packagename)
+    if not 'not-installed' in output and 'installed' in output:
+        return True
+    return False
 
 def get_services_status():
     status = []

@@ -9,6 +9,7 @@ export NOVA_API_KEY=${ADMIN_PASSWORD:-password}
 export NOVA_URL=${NOVA_URL:-http://$HOST_IP:5000/v2.0/}
 export NOVA_VERSION=${NOVA_VERSION:-1.1}
 export NOVA_REGION_NAME=${NOVA_REGION_NAME:-nova}
+export NOVA_AUTH_STRATEGY=keystone
 export EC2_URL=${EC2_URL:-http://$HOST_IP:80/services/Cloud}
 export EC2_ACCESS_KEY=${USERNAME:-demo}
 export EC2_SECRET_KEY=${ADMIN_PASSWORD:-password}

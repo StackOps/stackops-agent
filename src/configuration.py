@@ -611,8 +611,8 @@ class ComputeConfig(Config):
                                                                   'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
 
         # NOVA-VOLUME QEMU Specific
-        use_volume_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas','false') == 'true'
-        if use_volume_nfs:
+        self.use_volume_nfs = self._filler.getPropertyValue(xmldoc, 'nas', 'use_nas','false') == 'true'
+        if self.use_volume_nfs:
             self.volume_driver = self._filler.getPropertyValue(xmldoc, 'nas', 'volume_driver',
                     'nova.volume.nas.QEMUDriver')
             self.volumes_path = self._filler.getPropertyValue(xmldoc, 'nas', 'volumes_path', '/var/lib/nova/volumes')
@@ -686,7 +686,7 @@ class ComputeConfig(Config):
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
         utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.volume_mount_point, self.volumes_path, self.volumes_mount_parameters))
+            self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters))
         # mount NFS remote
         utils.execute('mount -a')
 
@@ -722,7 +722,8 @@ class ComputeConfig(Config):
             self.installPackages() # Install packages for component
             self._configureFlatInterface(hostname) # Configure Flat Interface
 
-            self._configureVolumeNFS() # Configure Volume NFS
+            if self.use_volume_nfs:
+                self._configureVolumeNFS() # Configure Volume NFS
             self._configureNFS() # Configure NFS
             self._configureGlusterFS() # Configure GlusterFS
             self._configureNovaVolumeHost() # Configure NovaVolume host name

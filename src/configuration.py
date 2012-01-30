@@ -678,15 +678,17 @@ class ComputeConfig(Config):
     def _configureNFS(self):
         if self.instances_filesystem_mount_type == 'nfs':
             # configure NFS mount
-            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.mount_point, self.instances_path, self.mount_parameters))
+            mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.instances_path, self.mount_parameters)
+            utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+            utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
 
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
-        utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters))
+        mpoint = '%s %s nfs %s 0 0'  % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
+        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
 
@@ -1177,8 +1179,9 @@ class QEMUVolumeConfig(Config):
 
     def _configureNFS(self):
         # configure NFS mount
-        utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.mount_point, self.volumes_path, self.mount_parameters))
+        mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.volumes_path, self.mount_parameters)
+        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
 

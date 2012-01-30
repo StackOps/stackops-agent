@@ -610,6 +610,19 @@ class ComputeConfig(Config):
             self.mount_parameters = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'mount_parameters',
                                                                   'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
 
+        # NOVA-VOLUME QEMU Specific
+        use_volume_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas','false') == 'true'
+        if use_volume_nfs:
+            self.volume_driver = self._filler.getPropertyValue(xmldoc, 'nas', 'volume_driver',
+                    'nova.volume.nas.QEMUDriver')
+            self.volumes_path = self._filler.getPropertyValue(xmldoc, 'nas', 'volumes_path', '/var/lib/nova/volumes')
+            self.volumes_mount_point = self._filler.getPropertyValue(xmldoc, 'nas', 'mount_point',
+                '192.168.10.198:/volumes/vol1/openstack-nfs-volumes')
+            self.volumes_mount_parameters = self._filler.getPropertyValue(xmldoc, 'nas', 'mount_parameters',
+                'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
+        else:
+            self.volume_driver = 'nova.volume.driver.ISCSIDriver'
+
         # Boot behaviour and virtio
         self.resume_guests_state_on_host_boot = self._filler.getPropertyValue(xmldoc, 'libvirt',
                                                                               'resume_guests_state_on_host_boot',
@@ -635,6 +648,7 @@ class ComputeConfig(Config):
                       'use_project_ca': self.use_project_ca,
                       'my_ip': self.my_ip,
                       # NOVA-COMPUTE SPECIFIC
+                      'volume_driver': self.volume_driver,
                       'image_service': self.image_service,
                       'glance_api_servers': '%s:%s' % (self.glance_hostname, self.glance_port),
                       'libvirt_type': self.libvirt_type,
@@ -669,6 +683,13 @@ class ComputeConfig(Config):
             # mount NFS remote
             utils.execute('mount -a')
 
+    def _configureVolumeNFS(self):
+        # configure NFS volumes mount
+        utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
+            self.volume_mount_point, self.volumes_path, self.volumes_mount_parameters))
+        # mount NFS remote
+        utils.execute('mount -a')
+
     def _configureNovaVolumeHost(self):
         # add to /etc/hosts file the hostname of nova-volume
         if (self.storage_hostname != 'nova-controller'):
@@ -701,6 +722,7 @@ class ComputeConfig(Config):
             self.installPackages() # Install packages for component
             self._configureFlatInterface(hostname) # Configure Flat Interface
 
+            self._configureVolumeNFS() # Configure Volume NFS
             self._configureNFS() # Configure NFS
             self._configureGlusterFS() # Configure GlusterFS
             self._configureNovaVolumeHost() # Configure NovaVolume host name
@@ -1074,6 +1096,111 @@ class NexentaVolumeConfig(Config):
         self.installPackagesCommon()
         self._installDeb('python-paramiko')
 
+class QEMUVolumeConfig(Config):
+    '''
+    Use virtual images as block devices
+    '''
+
+    _filename = "nova-volume.conf"
+
+    def __init__(self):
+        '''
+        Constructor
+        '''
+
+    # Write the parameters (if possible) from the xml file
+    def write(self, xmldoc):
+        # Basic common parameters
+        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
+        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
+        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
+        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
+        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
+        self.state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path', '/var/lib/nova')
+        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+
+        # NOVA database configuration
+        self.nova_username = self._filler.getPropertyValue(xmldoc, 'database', 'username', 'root')
+        self.nova_password = self._filler.getPropertyValue(xmldoc, 'database', 'password', 'nova')
+        self.nova_host = self._filler.getPropertyValue(xmldoc, 'database', 'host', '127.0.0.1')
+        self.nova_port = self._filler.getPropertyValue(xmldoc, 'database', 'port', '3306')
+        self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
+        self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
+        self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+
+        # RabbitMQ
+        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
+
+        # Network interfaces
+        self.iface_list = self._operatingsystem.getNetworkConfiguration()
+        self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
+        for iface in self.iface_list:
+            if iface['name'] == self.management_interface:
+                self.my_ip = iface['address']
+
+        # NOVA-VOLUME QEMU Specific
+        self.volume_driver = self._filler.getPropertyValue(xmldoc, 'nas', 'volume_driver',
+            'nova.volume.nas.QEMUDriver')
+        self.volumes_path = self._filler.getPropertyValue(xmldoc, 'nas', 'volumes_path', '/var/lib/nova/volumes')
+        self.nova_volume_host = self._filler.getPropertyValue(xmldoc, 'nas', 'host', 'nfs-server')
+
+        # Connect to shared filesystem
+        self.mount_point = self._filler.getPropertyValue(xmldoc, 'nas', 'mount_point',
+            '192.168.10.198:/volumes/vol1/openstack-nfs-volumes')
+        self.mount_parameters = self._filler.getPropertyValue(xmldoc, 'nas', 'mount_parameters',
+            'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
+
+        parameters = {'lock_path': self.lock_path,
+                      'verbose': self.verbose,
+                      'nodaemon': self.nodaemon,
+                      'sql_connection': self.nova_sql_connection,
+                      'auth_driver': self.auth_driver,
+                      'logdir': self.logdir,
+                      'state_path': self.state_path,
+                      'rabbit_host': self.rabbit_host,
+                      'use_project_ca': self.use_project_ca,
+                      'my_ip': self.my_ip,
+                      'volume_driver': self.volume_driver,
+                      'volumes_path': self.volumes_path,
+                      'host': self.nova_volume_host}
+
+        self._writeFile(self._filename, parameters)
+        return
+
+    def _enableInitFiles(self):
+        utils.execute('mv /etc/init/nova-volume.conf.disabled /etc/init/nova-volume.conf', None, None, False)
+
+    def _restartServices(self):
+        utils.execute('stop nova-volume; start nova-volume')
+
+    def _configureNFS(self):
+        # configure NFS mount
+        utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
+            self.mount_point, self.volumes_path, self.mount_parameters))
+        # mount NFS remote
+        utils.execute('mount -a')
+
+    def install(self, xmldoc, hostname):
+        result = ''
+        try:
+            # Install packages for component
+            self.installPackages()
+            # Mount shared file system
+            self._configureNFS()
+            # enable controller components
+            self._enableInitFiles()
+            # start compute components
+            self._restartServices()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('qemu-kvm')
+        self._installDeb('nfs-common')
+
 
 class Configurator(object):
     '''
@@ -1085,6 +1212,7 @@ class Configurator(object):
     _networkConfig = NetworkConfig()
     _volumeConfig = VolumeConfig()
     _nexentaVolumeConfig = NexentaVolumeConfig()
+    _qemuVolumeConfig = QEMUVolumeConfig()
     _filler = install.Filler();
 
     def __init__(self):
@@ -1212,6 +1340,13 @@ class Configurator(object):
                         result = self._nexentaVolumeConfig.install(component, hostname)
                         if len(result) > 0:
                             return result
+                    use_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas',
+                        'false') == 'true'
+                    if use_nfs:
+                        self._qemuVolumeConfig.write(component)
+                        result = self._qemuVolumeConfig.install(component, hostname)
+                        if len(result) > 0:
+                            return result
                     # Is a Compute?
                 if component.get_name() == 'compute':
                     configType |= 8
@@ -1230,7 +1365,9 @@ class Configurator(object):
                 if component.get_name() == 'volume':
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',
                                                                 'false') == 'true'
-                    if not use_nexenta:
+                    use_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas',
+                        'false') == 'true'
+                    if not use_nexenta and not use_nfs:
                         configType |= 4
                         self._volumeConfig.write(component)
                         result = self._volumeConfig.install(component, hostname)

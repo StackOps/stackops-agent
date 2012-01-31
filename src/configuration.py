@@ -232,6 +232,14 @@ class ControllerConfig(Config):
         # Configure Horizon
         self.use_horizon = self._filler.getPropertyValue(xmldoc, 'horizon', 'enabled', 'true') == 'true'
 
+
+        # Flavors configuration
+        self.set_flavors = self._filler.getPropertyValue(xmldoc, 'flavors', 'delete_default', 'false') == 'true'
+        if self.set_flavors:
+            self.flavors_list = self._filler.getPropertyValue(xmldoc, 'flavors', 'list', '[]')
+        else:
+            self.flavors_list = '[]'
+
         self.iface_list = self._operatingsystem.getNetworkConfiguration()
         self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
         self.my_ip = '127.0.0.1'
@@ -315,6 +323,31 @@ class ControllerConfig(Config):
         # create the database
         utils.execute('/var/lib/nova/bin/nova-manage db sync')
         # create an admin user called 'admin'
+
+    def _deleteFlavors(self):
+        # Get flavors
+        (out,err) = utils.execute('/var/lib/nova/bin/nova-manage flavor list')
+        old_flavors = out.split('\n')
+        flavorids = []
+        for str in old_flavors:
+            if len(str)>0:
+                (flavorid,err) = utils.execute("echo '%s' | sed 's/: Memory:\(.*\)//g'" % str)
+                flavorids.append(flavorid)
+        for flavor in flavorids:
+            print flavor
+            utils.execute('/var/lib/nova/bin/nova-manage flavor delete %s --purge' % flavor)
+
+    def _addFlavors(self):
+        # Add flavors
+        flavors = eval(self.flavors_list)
+        for str in flavors:
+            flavor = str.split('#')
+            name = flavor[0]
+            memory = flavor[1]
+            cpu = flavor[2]
+            storage = flavor[3]
+            flavorid = flavor[4]
+            utils.execute('/var/lib/nova/bin/nova-manage flavor create --name=%s --memory=%s --cpu=%s --local_gb=%s --flavor=%s' % (name,memory,cpu,storage,flavorid))
 
     def _createDefaultProjects(self):
         # create a project called 'admin' with project manager of 'admin'
@@ -502,6 +535,9 @@ class ControllerConfig(Config):
                 self._configureKeystone()
                 self._configureHorizon()
                 self._createNovaDatabase()
+                if self.set_flavors:
+                    self._deleteFlavors()
+                self._addFlavors()
                 #                self._createDefaultProjects()
                 self._enableInitFiles()
                 self._restartServices()

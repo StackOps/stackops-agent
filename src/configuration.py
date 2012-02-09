@@ -634,7 +634,7 @@ class ComputeConfig(Config):
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface', 'eth1')
 
         # Connect to shared filesystem
-        self.instances_path = self._filler.getPropertyValue(xmldoc, 'instances_path', 'instances_path',
+        self.instances_path = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'instances_path',
                                                             '%s/instances' % self.state_path)
         self.instances_filesystem_mount_type = self._filler.getPropertyValue(xmldoc, 'instances_filesystem',
                                                                              'mount_type', 'local')

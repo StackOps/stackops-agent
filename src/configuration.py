@@ -232,7 +232,6 @@ class ControllerConfig(Config):
         # Configure Horizon
         self.use_horizon = self._filler.getPropertyValue(xmldoc, 'horizon', 'enabled', 'true') == 'true'
 
-
         # Flavors configuration
         self.set_flavors = self._filler.getPropertyValue(xmldoc, 'flavors', 'delete_default', 'false') == 'true'
         if self.set_flavors:
@@ -246,6 +245,11 @@ class ControllerConfig(Config):
         for iface in self.iface_list:
             if iface['name'] == self.management_interface:
                 self.my_ip = iface['address']
+
+        # VNCProxy configuration
+        self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'hostname', self.my_ip)
+        self.vncproxy_port = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'port', '6080')
+        self.vncproxy_type = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'type', 'http')
 
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,
@@ -275,7 +279,7 @@ class ControllerConfig(Config):
                       'api_paste_config': self.api_paste_config,
                       'allow_admin_api': 'true',
                       'osapi_extensions_path': '/var/lib/openstackx/extensions',
-                      'vncproxy_url': 'http://%s:%s' % (self.my_ip, '6080')}
+                      'vncproxy_url': '%s://%s:%s' % (self.vncproxy_type, self.vncproxy_host, self.vncproxy_port)}
 
         self._writeFile(self._filename, parameters)
         return

@@ -785,6 +785,7 @@ class ComputeConfig(Config):
         self._installDeb('user-mode-linux')
         self._installDeb('libvirt-bin')
         self._installDeb('python-libvirt')
+        self._installDeb('ifenslave')
 
 
 class NetworkConfig(Config):

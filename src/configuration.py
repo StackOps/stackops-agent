@@ -344,7 +344,7 @@ class ControllerConfig(Config):
         # Add flavors
         flavors = eval(self.flavors_list)
         for str in flavors:
-            flavor = str.split('#')
+            flavor = str.split(';')
             name = flavor[0]
             memory = flavor[1]
             cpu = flavor[2]

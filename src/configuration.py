@@ -247,7 +247,7 @@ class ControllerConfig(Config):
                 self.my_ip = iface['address']
 
         # VNCProxy configuration
-        self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'hostname', self.my_ip)
+        self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.my_ip)
         self.vncproxy_port = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'port', '6080')
         self.vncproxy_type = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'type', 'http')
 
@@ -338,8 +338,7 @@ class ControllerConfig(Config):
                 (flavorid,err) = utils.execute("echo '%s' | sed 's/: Memory:\(.*\)//g'" % str)
                 flavorids.append(flavorid)
         for flavor in flavorids:
-            print flavor
-            utils.execute('/var/lib/nova/bin/nova-manage flavor delete %s --purge' % flavor)
+            utils.execute('/var/lib/nova/bin/nova-manage flavor delete --purge %s' % flavor)
 
     def _addFlavors(self):
         # Add flavors

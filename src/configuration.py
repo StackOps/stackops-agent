@@ -423,8 +423,9 @@ class ControllerConfig(Config):
         utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
         if self.glance_mount_type == 'nfs':
             # configure NFS mount
-            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters))
+            mpoint = '%s %s nfs %s 0 0'  % (self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
+            utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+            utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
         utils.execute(
@@ -696,9 +697,7 @@ class ComputeConfig(Config):
                       'instances_path': self.instances_path,
                       'resume_guests_state_on_host_boot': self.resume_guests_state_on_host_boot,
                       'start_guests_on_host_boot': self.start_guests_on_host_boot,
-                      'libvirt_use_virtio_for_bridges': self.libvirt_use_virtio_for_bridges,
-                      'vncserver_host': self.my_ip,
-                      'vncproxy_url': 'http://%s:%s' % (self.rabbit_host, '6080')}
+                      'libvirt_use_virtio_for_bridges': self.libvirt_use_virtio_for_bridges}
 
         self._writeFile(self._filename, parameters)
         return
@@ -718,7 +717,7 @@ class ComputeConfig(Config):
         if self.instances_filesystem_mount_type == 'nfs':
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.instances_path, self.mount_parameters)
-            utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+            utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
@@ -726,7 +725,7 @@ class ComputeConfig(Config):
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
         mpoint = '%s %s nfs %s 0 0'  % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
-        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
@@ -1219,7 +1218,7 @@ class QEMUVolumeConfig(Config):
     def _configureNFS(self):
         # configure NFS mount
         mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.volumes_path, self.mount_parameters)
-        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')

@@ -735,6 +735,23 @@ class ComputeConfig(Config):
         if (self.storage_hostname != 'nova-controller'):
             utils.execute('echo "\n' + self.iscsi_ip_prefix + '\t' + self.storage_hostname + '" >> /etc/hosts')
 
+    def _configureLibvirt(self):
+        # enable communication to libvirt
+        utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
+        utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
+        utils.execute('''sed -i 's/#auth_tcp = "sasl"/auth_tcp = "none"/g' /etc/libvirt/libvirtd.conf''')
+        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf.disabled''', check_exit_code=False)
+        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf''', check_exit_code=False)
+
+    def _configureGlusterFS(self):
+        if self.instances_filesystem_mount_type == 'glusterfs':
+            # configure NFS mount
+            utils.execute(
+                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (
+                    self.mount_point, self.instances_path, self.mount_parameters))
+            # mount NFS remote
+            utils.execute('mount -a')
+
     def _configureInitServices(self):
         # enable libvirt-bin
         utils.execute('mv /etc/init/libvirt-bin.conf.disabled /etc/init/libvirt-bin.conf', None, None, False)
@@ -747,15 +764,6 @@ class ComputeConfig(Config):
         # start compute components
         utils.execute('stop nova-compute; start nova-compute')
 
-    def _configureGlusterFS(self):
-        if self.instances_filesystem_mount_type == 'glusterfs':
-            # configure NFS mount
-            utils.execute(
-                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (
-                self.mount_point, self.instances_path, self.mount_parameters))
-            # mount NFS remote
-            utils.execute('mount -a')
-
     def install(self, xmldoc, hostname):
         result = ''
         try:
@@ -767,7 +775,7 @@ class ComputeConfig(Config):
             self._configureNFS() # Configure NFS
             self._configureGlusterFS() # Configure GlusterFS
             self._configureNovaVolumeHost() # Configure NovaVolume host name
-
+            self._configureLibvirt() # Enable Libvirt communication
             self._configureInitServices()
             self._restartServices()
         except  Exception as inst:
@@ -1425,8 +1433,8 @@ class Configurator(object):
             # configType = 8 dual o multinode (compute node)
 
             # Deprecated.
-            #        self._createCollectdConfigFile(configType,collectd_listener)
-            #        utils.execute('service collectd restart')
+                    self._createCollectdConfigFile(configType,collectd_listener)
+                    utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'

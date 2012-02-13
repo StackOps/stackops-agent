@@ -249,7 +249,7 @@ class ControllerConfig(Config):
                 self.my_ip = iface['address']
 
         # VNCProxy configuration
-        self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'hostname', self.my_ip)
+        self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.my_ip)
         self.vncproxy_port = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'port', '6080')
         self.vncproxy_type = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'type', 'http')
 
@@ -340,14 +340,13 @@ class ControllerConfig(Config):
                 (flavorid,err) = utils.execute("echo '%s' | sed 's/: Memory:\(.*\)//g'" % str)
                 flavorids.append(flavorid)
         for flavor in flavorids:
-            print flavor
-            utils.execute('/var/lib/nova/bin/nova-manage flavor delete %s --purge' % flavor)
+            utils.execute('/var/lib/nova/bin/nova-manage flavor delete --purge %s' % flavor)
 
     def _addFlavors(self):
         # Add flavors
         flavors = eval(self.flavors_list)
         for str in flavors:
-            flavor = str.split('#')
+            flavor = str.split(';')
             name = flavor[0]
             memory = flavor[1]
             cpu = flavor[2]
@@ -426,8 +425,9 @@ class ControllerConfig(Config):
         utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
         if self.glance_mount_type == 'nfs':
             # configure NFS mount
-            utils.execute('echo "\n %s %s nfs %s 0 0" >> /etc/fstab' % (
-            self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters))
+            mpoint = '%s %s nfs %s 0 0'  % (self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
+            utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+            utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
         utils.execute(
@@ -637,7 +637,7 @@ class ComputeConfig(Config):
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface', 'eth1')
 
         # Connect to shared filesystem
-        self.instances_path = self._filler.getPropertyValue(xmldoc, 'instances_path', 'instances_path',
+        self.instances_path = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'instances_path',
                                                             '%s/instances' % self.state_path)
         self.instances_filesystem_mount_type = self._filler.getPropertyValue(xmldoc, 'instances_filesystem',
                                                                              'mount_type', 'local')
@@ -699,9 +699,7 @@ class ComputeConfig(Config):
                       'instances_path': self.instances_path,
                       'resume_guests_state_on_host_boot': self.resume_guests_state_on_host_boot,
                       'start_guests_on_host_boot': self.start_guests_on_host_boot,
-                      'libvirt_use_virtio_for_bridges': self.libvirt_use_virtio_for_bridges,
-                      'vncserver_host': self.my_ip,
-                      'vncproxy_url': 'http://%s:%s' % (self.rabbit_host, '6080')}
+                      'libvirt_use_virtio_for_bridges': self.libvirt_use_virtio_for_bridges}
 
         self._writeFile(self._filename, parameters)
         return
@@ -721,7 +719,7 @@ class ComputeConfig(Config):
         if self.instances_filesystem_mount_type == 'nfs':
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.instances_path, self.mount_parameters)
-            utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+            utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
@@ -729,7 +727,7 @@ class ComputeConfig(Config):
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
         mpoint = '%s %s nfs %s 0 0'  % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
-        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
@@ -738,6 +736,23 @@ class ComputeConfig(Config):
         # add to /etc/hosts file the hostname of nova-volume
         if (self.storage_hostname != 'nova-controller'):
             utils.execute('echo "\n' + self.iscsi_ip_prefix + '\t' + self.storage_hostname + '" >> /etc/hosts')
+
+    def _configureLibvirt(self):
+        # enable communication to libvirt
+        utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
+        utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
+        utils.execute('''sed -i 's/#auth_tcp = "sasl"/auth_tcp = "none"/g' /etc/libvirt/libvirtd.conf''')
+        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf.disabled''', check_exit_code=False)
+        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf''', check_exit_code=False)
+
+    def _configureGlusterFS(self):
+        if self.instances_filesystem_mount_type == 'glusterfs':
+            # configure NFS mount
+            utils.execute(
+                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (
+                    self.mount_point, self.instances_path, self.mount_parameters))
+            # mount NFS remote
+            utils.execute('mount -a')
 
     def _configureInitServices(self):
         # enable libvirt-bin
@@ -751,15 +766,6 @@ class ComputeConfig(Config):
         # start compute components
         utils.execute('stop nova-compute; start nova-compute')
 
-    def _configureGlusterFS(self):
-        if self.instances_filesystem_mount_type == 'glusterfs':
-            # configure NFS mount
-            utils.execute(
-                'echo "\n %s %s glusterfs %s 0 0" >> /etc/fstab' % (
-                self.mount_point, self.instances_path, self.mount_parameters))
-            # mount NFS remote
-            utils.execute('mount -a')
-
     def install(self, xmldoc, hostname):
         result = ''
         try:
@@ -772,7 +778,7 @@ class ComputeConfig(Config):
             self._configureNFS() # Configure NFS
             self._configureGlusterFS() # Configure GlusterFS
             self._configureNovaVolumeHost() # Configure NovaVolume host name
-
+            self._configureLibvirt() # Enable Libvirt communication
             self._configureInitServices()
             self._restartServices()
         except  Exception as inst:
@@ -1278,7 +1284,7 @@ class QEMUVolumeConfig(Config):
     def _configureNFS(self):
         # configure NFS mount
         mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.volumes_path, self.mount_parameters)
-        utils.execute("sed -i 's,%s,,g' /etc/fstab" % mpoint)
+        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
@@ -1485,8 +1491,8 @@ class Configurator(object):
             # configType = 8 dual o multinode (compute node)
 
             # Deprecated.
-            #        self._createCollectdConfigFile(configType,collectd_listener)
-            #        utils.execute('service collectd restart')
+                    self._createCollectdConfigFile(configType,collectd_listener)
+                    utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'

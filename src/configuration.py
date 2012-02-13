@@ -795,7 +795,7 @@ class ComputeConfig(Config):
             return
 
         # Write new configuration.
-        with open('/etc/network/interfaces', 'a') as f:
+        with open('/etc/network/interfaces', 'w') as f:
             f.write("""
 auto eth0
 allow-bond0 eth0
@@ -803,7 +803,7 @@ iface eth0 inet manual
     bond-master bond0
 
 auto eth1
-allow-bond0 eth1
+allow-bond1 eth1
 iface eth1 inet manual
     bond-master bond1
 

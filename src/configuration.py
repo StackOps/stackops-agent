@@ -23,8 +23,10 @@ import getpass
 import flags
 import install
 import utils
-import os
+import os, os.path
 import shutil
+import re
+from twisted.python import log
 
 class VanillaConfig(object):
     '''
@@ -763,6 +765,7 @@ class ComputeConfig(Config):
         try:
             self.installPackages() # Install packages for component
             self._configureFlatInterface(hostname) # Configure Flat Interface
+            self._configureLinkAggregation() # NIC Bonding
 
             if self.use_volume_nfs:
                 self._configureVolumeNFS() # Configure Volume NFS
@@ -773,8 +776,62 @@ class ComputeConfig(Config):
             self._configureInitServices()
             self._restartServices()
         except  Exception as inst:
+            log.err()
             result = 'ERROR: %s' % str(inst)
         return result
+
+    def _configureLinkAggregation(self):
+        """Configure initial network link aggregation (NIC bonding)"""
+
+        # Test if management network interdfce is dhcp configured.
+        interfaces_content = open('/etc/network/interfaces').read()
+        if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I|re.M):
+            return
+
+        # Write new configuration.
+        with open('/etc/network/interfaces', 'a') as f:
+            f.write("""
+auto eth0
+allow-bond0 eth0
+iface eth0 inet manual
+    bond-master bond0
+
+auto eth1
+allow-bond0 eth1
+iface eth1 inet manual
+    bond-master bond1
+
+auto bond0
+iface bond0 inet dhcp
+        bond-mode 4
+        miimon 100
+
+auto bond1
+iface bond1 inet manual
+    bond-mode 4
+    miimon 100
+    post-up ifconfig $IFACE up
+    pre-down ifconfig $IFACE down""")
+        if os.path.exists('/etc/modprobe.d/aliases.conf'):
+            aliases_content = []
+            for line in open('/etc/modprobe.d/aliases.conf'):
+                if not 'bonding' in line:
+                    aliases_content.append(line)
+            aliases_content = ''.join(aliases_content)
+        else:
+            aliases_content = ''
+        aliases_content += 'alias bond0 bonding\nalias bond1 bonding\noptions bonding mode=4 miimon=100 max_bonds=2'
+        with open('/etc/modprobe.d/aliases.conf', 'w') as f:
+            f.write(aliases_content)
+
+        # Manual setup without system reboot.
+        eth0_conf = utils.get_ip_info('eth0')[0]
+        utils.execute('modprobe bonding')
+        utils.execute('ifconfig bond0 %s netmask %s'%eth0_conf[2:])
+        utils.execute('ifenslave bond0 eth0')
+        utils.execute('ifconfig eth1 up')
+        utils.execute('ifconfig bond1 up')
+        utils.execute('ifenslave bond1 eth1')
 
     def installPackages(self):
         self.installPackagesCommon()
@@ -1433,8 +1490,3 @@ class Configurator(object):
             return ''
         else:
             return 'You should run this program as super user.'
-    
-        
-
-
-            

@@ -59,6 +59,29 @@ def execute(cmd, process_input=None, addl_env=None, check_exit_code=True):
                                         cmd=cmd)
     return result
 
-
 def abspath(s):
     return os.path.join(os.path.dirname(__file__), s)
+
+def get_ip_info(interface=''):
+    """Return a list with one entry for each interface.
+    Entries has format: (order, name, ip_address, netmask)"""
+    interfaces = []
+    for line in execute('ip -f inet -o addr show %s'%(interface, ))[0].splitlines():
+        line = line.split()
+        order, name = line[0:2]
+        ip, netmask = line[3].split('/')
+        interfaces.append((int(order[:-1]), name, ip, bits2netmask(netmask)))
+    return interfaces
+
+def bits2netmask(bits):
+    bits= int(bits)
+    parts = []
+    while bits > 0:
+        if bits > 7:
+            parts.append('255')
+        else:
+            parts.append(str((255^2**(8-bits))+1))
+        bits -= 8
+    if len(parts) < 4:
+        parts.extend(['0']*(4-len(parts)))
+    return '.'.join(parts)

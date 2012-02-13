@@ -679,6 +679,11 @@ class ComputeConfig(Config):
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
         self.image_service = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service',
                                                            'nova.image.glance.GlanceImageService')
+
+        # Bonding configurarion
+        self.management_network_bond = self._filler.getPropertyValue(xmldoc, 'networking', 'management_network_bond')
+        self.service_network_bond = self._filler.getPropertyValue(xmldoc, 'networking', 'service_network_bond')
+
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,
                       'nodaemon': self.nodaemon,
@@ -795,29 +800,13 @@ class ComputeConfig(Config):
             return
 
         # Write new configuration.
+        interfaces_content = templates['interfaces']
+        if self.management_network_bond:
+            interfaces_content += templates['iface_bonding'] % {'iface':self.management_network_bond, 'bond':'bond0'}
+        if self.service_network_bond:
+            interfaces_content += templates['iface_bonding'] % {'iface':self.service_network_bond, 'bond':'bond1'}
         with open('/etc/network/interfaces', 'w') as f:
-            f.write("""
-auto eth0
-allow-bond0 eth0
-iface eth0 inet manual
-    bond-master bond0
-
-auto eth1
-allow-bond1 eth1
-iface eth1 inet manual
-    bond-master bond1
-
-auto bond0
-iface bond0 inet dhcp
-        bond-mode 4
-        miimon 100
-
-auto bond1
-iface bond1 inet manual
-    bond-mode 4
-    miimon 100
-    post-up ifconfig $IFACE up
-    pre-down ifconfig $IFACE down""")
+            f.write(interfaces_content)
         if os.path.exists('/etc/modprobe.d/aliases.conf'):
             aliases_content = []
             for line in open('/etc/modprobe.d/aliases.conf'):
@@ -838,6 +827,10 @@ iface bond1 inet manual
         utils.execute('ifconfig eth1 up')
         utils.execute('ifconfig bond1 up')
         utils.execute('ifenslave bond1 eth1')
+        if self.management_network_bond:
+            utils.execute('ifenslave bond0 ' + self.management_network_bond)
+        if self.service_network_bond:
+            utils.execute('ifenslave bond1 ' + self.service_network_bond)
 
     def installPackages(self):
         self.installPackagesCommon()
@@ -1496,3 +1489,39 @@ class Configurator(object):
             return ''
         else:
             return 'You should run this program as super user.'
+
+# Templates for simple config-files generation.
+templates = {
+
+    'interfaces': """
+auto eth0
+allow-bond0 eth0
+iface eth0 inet manual
+    bond-master bond0
+
+auto eth1
+allow-bond1 eth1
+iface eth1 inet manual
+    bond-master bond1
+
+auto bond0
+iface bond0 inet dhcp
+        bond-mode 4
+        miimon 100
+
+auto bond1
+iface bond1 inet manual
+    bond-mode 4
+    miimon 100
+    post-up ifconfig $IFACE up
+    pre-down ifconfig $IFACE down
+    """,
+
+    'iface_bonding': """
+auto %(iface)s
+allow-%(bond)s %(iface)s
+iface %(iface)s inet manual
+    bond-master %(bond)s
+    """,
+
+}

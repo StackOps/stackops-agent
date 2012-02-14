@@ -836,6 +836,7 @@ class ComputeConfig(Config):
         self.installPackagesCommon()
         self._installDeb('nfs-common')
         self._installDeb('kvm')
+        self._installDeb('kvm-pxe')
         self._installDeb('iptables')
         self._installDeb('ebtables')
         self._installDeb('user-mode-linux')

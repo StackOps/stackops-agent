@@ -681,8 +681,8 @@ class ComputeConfig(Config):
                                                            'nova.image.glance.GlanceImageService')
 
         # Bonding configurarion
-        self.management_network_bond = self._filler.getPropertyValue(xmldoc, 'networking', 'management_network_bond')
-        self.service_network_bond = self._filler.getPropertyValue(xmldoc, 'networking', 'service_network_bond')
+        self.management_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_network_bond')
+        self.service_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'service_network_bond')
 
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,

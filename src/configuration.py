@@ -26,6 +26,7 @@ import utils
 import os, os.path
 import shutil
 import re
+import time
 from twisted.python import log
 
 class VanillaConfig(object):
@@ -820,17 +821,22 @@ class ComputeConfig(Config):
             f.write(aliases_content)
 
         # Manual setup without system reboot.
-        eth0_conf = utils.get_ip_info('eth0')[0]
-        utils.execute('modprobe bonding')
-        utils.execute('ifconfig bond0 %s netmask %s'%eth0_conf[2:])
-        utils.execute('ifenslave bond0 eth0')
-        utils.execute('ifconfig eth1 up')
-        utils.execute('ifconfig bond1 up')
-        utils.execute('ifenslave bond1 eth1')
-        if self.management_network_bond:
-            utils.execute('ifenslave bond0 ' + self.management_network_bond)
-        if self.service_network_bond:
-            utils.execute('ifenslave bond1 ' + self.service_network_bond)
+        eth0_conf = utils.get_ip_info('eth0')
+        if eth0_conf:
+            eth0_conf = eth0_conf[0]
+            utils.execute('modprobe bonding')
+            utils.execute('ifconfig bond0 %s netmask %s'%eth0_conf[2:])
+            utils.execute('ifenslave bond0 eth0')
+            utils.execute('ifconfig eth1 up')
+            utils.execute('ifconfig bond1 up')
+            utils.execute('ifenslave bond1 eth1')
+            if self.management_network_bond:
+                utils.execute('ifenslave bond0 ' + self.management_network_bond)
+            if self.service_network_bond:
+                utils.execute('ifenslave bond1 ' + self.service_network_bond)
+
+        # Wait for bonding up.
+        time.sleep(10)
 
     def installPackages(self):
         self.installPackagesCommon()

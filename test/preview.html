@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html><head>
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+    
+        <title>Preview</title>
+		<link rel="stylesheet" href="preview_files/reset.css">
+		<link rel="stylesheet" href="preview_files/jquery-ui.css">
+		<link rel="stylesheet" href="preview_files/formalize.css">
+		<link rel="stylesheet" href="preview_files/dropdown.css">
+		<link rel="stylesheet" href="preview_files/default.css">
+        <link rel="stylesheet" href="preview_files/custom.css">
+		<link rel="stylesheet" href="preview_files/960.css">
+        <link rel="shortcut icon" href="http://installer.stackops.org/images/favicon.ico" type="image/x-icon">
+        
+		
+		<meta name="layout" content="main">
+	
+    </head><body>
+		<header id="page-header">
+			<div class="container_12 clearfix">
+				<div class="grid_6">
+					<a href="http://www.stackops.com/">
+						<img id="logo" src="preview_files/stackops.png" alt="StackOps">
+					</a>
+					<img id="openstack-logo" src="preview_files/openstack_logo.png" alt="OpenStack">
+                    
+<ul id="nav">
+    
+        <li><a href="http://installer.stackops.org/install/cloudlist">Zones List</a></li>
+<a href="http://installer.stackops.org/install/cloudlist">    
+    </a><li><a href="http://forum.stackops.org/">Support</a></li>
+<a href="http://forum.stackops.org/">	</a><li><a href="http://docs.stackops.org/">Documentation</a></li>
+    <li><a href="http://jira.stackops.org/">Bugs/Improvements</a></li>
+</ul>
+<a href="http://jira.stackops.org/">				</a></div>
+<a href="http://jira.stackops.org/">				</a><div class="grid_6" style="margin-top: 20px;">
+<a href="http://jira.stackops.org/">					</a><div style="text-align: right;">
+<a href="http://jira.stackops.org/">	</a><a href="http://www.twitter.com/stackops"><img src="preview_files/twitter-a.png" alt="Seguir a stackops en Twitter"></a>
+	<iframe id="f25f71180a361fc" name="f14649eb840091e" style="border: medium none; overflow: hidden; height: 20px; width: 73px; vertical-align: middle;" title="Like this content on Facebook." class="fb_ltr" src="preview_files/like.html" scrolling="no"></iframe>
+</div>
+					<div style="float: right; margin-top: 40px; text-align: right;">
+						
+							<ul style="margin-bottom: 10px;">
+								<li style="display: inline;">
+									Welcome back <a href="http://installer.stackops.org/register/edit">Diego</a>!
+								</li>
+								<li style="display: inline;">
+									| <a href="http://installer.stackops.org/logout/index">Logout</a>
+								</li>
+								<li style="display: inline;"></li>
+							</ul>
+						
+					</div>
+				</div>
+			</div>
+		</header>
+		<div id="page-content">
+			<div class="container_12 clearfix rounded-content">
+				<div class="rounded-content-inner">
+					
+					
+		<div class="grid_12">
+			
+			<h1><strong>Congratulations&nbsp;Diego</strong>, now you can configure your node!</h1>
+			
+			
+			<div class="wikicontent">
+				<p>You have just configured a node, we are about to install it. 
+Please click on the green button below and be patient, it can take 
+several minutes!</p>
+			</div>
+			<form action="http://192.168.10.32:8888/" method="post">
+                
+
+                    <textarea rows="20" cols="120" name="sysinfo" id="sysinfo">&lt;?xml
+ version="1.0" encoding="UTF-8"?&gt;
+&lt;node&gt;
+  &lt;hardware&gt;
+    &lt;cpus&gt;
+      &lt;cpu name="QEMU Virtual CPU version 0.12.3" speed="2194" 
+cores="1"/&gt;
+      &lt;cpu name="QEMU Virtual CPU version 0.12.3" speed="2194" 
+cores="1"/&gt;
+    &lt;/cpus&gt;
+    &lt;virtualization&gt;false&lt;/virtualization&gt;
+    &lt;memory&gt;1551380480&lt;/memory&gt;
+    &lt;nics&gt;
+      &lt;nic interface="eth0" type="" mac="" 
+name="L-8139/8139C/8139C+"/&gt;
+    &lt;/nics&gt;
+    &lt;partitions&gt;
+      &lt;partition device="/dev/sda" size="10737418240" used="-1" 
+mountpoint=""/&gt;
+      &lt;partition device="/dev/sda1" size="10069299200" 
+used="1595699200" mountpoint="/"/&gt;
+      &lt;partition device="/dev/sda2" size="1024" used="-1" 
+mountpoint=""/&gt;
+      &lt;partition device="/dev/sda5" size="504365056" used="-1" 
+mountpoint=""/&gt;
+      &lt;partition device="/dev/sdb" size="32212254720" used="-1" 
+mountpoint=""/&gt;
+    &lt;/partitions&gt;
+  &lt;/hardware&gt;
+  &lt;software&gt;
+    &lt;os name="Linux/stackops-node/2.6.32-28-server/#55-Ubuntu SMP Mon
+ Jan 10 23:57:16 UTC 2011/x86_64/0.4-b1232-d20120130"&gt;
+      &lt;network hostname="nova-controller"&gt;
+        &lt;nameserver&gt;8.8.8.8&lt;/nameserver&gt;
+        &lt;nameserver&gt;8.8.4.4&lt;/nameserver&gt;
+        &lt;iface name="eth0" address="192.168.10.32" 
+netmask="255.255.255.0" gateway="192.168.10.1" dhcp="false" 
+default="false" virtual="false"/&gt;
+      &lt;/network&gt;
+    &lt;/os&gt;
+  &lt;/software&gt;
+  &lt;cloud&gt;
+    &lt;component name="controller"&gt;
+&lt;service type="nas"&gt;
+&lt;property name="use_nas" value="true" /&gt;
+&lt;property name="volume_driver" value="nova.volume.nas.QEMUDriver" 
+/&gt;
+&lt;property name="volumes_path" value="/var/lib/nova/volumes" /&gt;
+&lt;property name="host" value="nfs-server" /&gt;
+&lt;property name="mount_point" 
+value="192.168.10.30:/export/nfs-openstack-volumes" /&gt;
+&lt;property name="mount_parameters" value="defaults" /&gt;
+&lt;/service&gt;
+&lt;service type="vncproxy"&gt;
+&lt;property name="port" value="6789" /&gt;
+&lt;property name="host" value="cloudtest.stackops.net" /&gt;
+&lt;property name="type" value="http" /&gt;
+&lt;/service&gt;
+&lt;service type="flavors"&gt;
+&lt;property name="delete_default" value="true" /&gt;
+&lt;property name="list" value="'small;1024;1;10;1000','medium;2048;2;20;1001','large;4096;4;40;1002'" /&gt;
+&lt;/service&gt;
+      &lt;service type="infrastructure"&gt;
+        &lt;property name="mysql_username" value="root"/&gt;
+        &lt;property name="mysql_password" value="nova"/&gt;
+        &lt;property name="listen_port" value="3306"/&gt;
+        &lt;property name="install_mysql" value="true"/&gt;
+        &lt;property name="install_rabbitmq" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="nova"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="glance"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="keystone_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="keystone"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="ec2"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8773"/&gt;
+      &lt;/service&gt;
+      &lt;service type="osapi"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8774"/&gt;
+      &lt;/service&gt;
+      &lt;service type="rabbitmq"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+      &lt;service type="horizon"&gt;
+        &lt;property name="enabled" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="s3"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="3333"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="9292"/&gt;
+        &lt;property name="image_service" 
+value="nova.image.glance.GlanceImageService"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-glance"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="instances_filesystem"&gt;
+        &lt;property name="instances_path" 
+value="/var/lib/nova/instances"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-openstack-instances"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="scheduler"&gt;
+        &lt;property name="driver" 
+value="nova.scheduler.simple.SimpleScheduler"/&gt;
+        &lt;property name="max_cores" value="16"/&gt;
+        &lt;property name="max_networks" value="1000"/&gt;
+        &lt;property name="max_gigabytes" value="2048"/&gt;
+      &lt;/service&gt;
+      &lt;service type="nexenta_san"&gt;
+        &lt;property name="volume_driver" 
+value="nova.volume.san.NexentaISCSIDriver"/&gt;
+        &lt;property name="volume_group" value="vol1"/&gt;
+        &lt;property name="host" value="0.0.0.0"/&gt;
+        &lt;property name="login" value="stackops"/&gt;
+        &lt;property name="password" value="stackops"/&gt;
+        &lt;property name="nova_volume_host" value="nexenta-san"/&gt;
+        &lt;property name="use_nexenta" value="false"/&gt;
+        &lt;property name="thin_provision" value="true"/&gt;
+        &lt;property name="use_local_volumes" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="auth_users"&gt;
+        &lt;property name="keystone_enabled" value="true"/&gt;
+        &lt;property name="admin_password" value="password"/&gt;
+        &lt;property name="default_usenamer" value="demo"/&gt;
+        &lt;property name="default_password" value="password"/&gt;
+        &lt;property name="default_tenant" value="demo"/&gt;
+      &lt;/service&gt;
+      &lt;service type="authentication"&gt;
+        &lt;property name="driver" 
+value="nova.auth.dbdriver.DbDriver"/&gt;
+        &lt;property name="use_project_ca" value="True"/&gt;
+      &lt;/service&gt;
+      &lt;service type="generic"&gt;
+        &lt;property name="nodaemon" value="True"/&gt;
+        &lt;property name="verbose" value="True"/&gt;
+        &lt;property name="lock_path" value="/tmp"/&gt;
+      &lt;/service&gt;
+      &lt;service type="logs"&gt;
+        &lt;property name="dir" value="/var/log/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="state"&gt;
+        &lt;property name="path" value="/var/lib/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="monitoring"&gt;
+        &lt;property name="collectd_listener" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+    &lt;/component&gt;
+    &lt;component name="compute"&gt;
+&lt;service type="nas"&gt;
+&lt;property name="use_nas" value="true" /&gt;
+&lt;property name="volume_driver" value="nova.volume.nas.QEMUDriver" 
+/&gt;
+&lt;property name="volumes_path" value="/var/lib/nova/volumes" /&gt;
+&lt;property name="host" value="nfs-server" /&gt;
+&lt;property name="mount_point" 
+value="192.168.10.30:/export/nfs-openstack-volumes" /&gt;
+&lt;property name="mount_parameters" value="defaults" /&gt;
+&lt;/service&gt;
+      &lt;service type="libvirt"&gt;
+        &lt;property name="type" value="qemu"/&gt;
+      &lt;/service&gt;
+      &lt;service type="interfaces"&gt;
+        &lt;property name="flat_interface" value="dummy0"/&gt;
+      &lt;/service&gt;
+      &lt;service type="iscsi"&gt;
+        &lt;property name="ip_prefix" value="192.168.10.32"/&gt;
+        &lt;property name="num_targets" value="100"/&gt;
+        &lt;property name="storage_hostname" 
+value="nova-controller"/&gt;
+      &lt;/service&gt;
+      &lt;service type="infrastructure"&gt;
+        &lt;property name="mysql_username" value="root"/&gt;
+        &lt;property name="mysql_password" value="nova"/&gt;
+        &lt;property name="listen_port" value="3306"/&gt;
+        &lt;property name="install_mysql" value="true"/&gt;
+        &lt;property name="install_rabbitmq" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="nova"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="glance"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="keystone_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="keystone"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="ec2"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8773"/&gt;
+      &lt;/service&gt;
+      &lt;service type="osapi"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8774"/&gt;
+      &lt;/service&gt;
+      &lt;service type="rabbitmq"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+      &lt;service type="horizon"&gt;
+        &lt;property name="enabled" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="s3"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="3333"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="9292"/&gt;
+        &lt;property name="image_service" 
+value="nova.image.glance.GlanceImageService"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-glance"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="instances_filesystem"&gt;
+        &lt;property name="instances_path" 
+value="/var/lib/nova/instances"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-openstack-instances"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="scheduler"&gt;
+        &lt;property name="driver" 
+value="nova.scheduler.simple.SimpleScheduler"/&gt;
+        &lt;property name="max_cores" value="16"/&gt;
+        &lt;property name="max_networks" value="1000"/&gt;
+        &lt;property name="max_gigabytes" value="2048"/&gt;
+      &lt;/service&gt;
+      &lt;service type="nexenta_san"&gt;
+        &lt;property name="volume_driver" 
+value="nova.volume.san.NexentaISCSIDriver"/&gt;
+        &lt;property name="volume_group" value="vol1"/&gt;
+        &lt;property name="host" value="0.0.0.0"/&gt;
+        &lt;property name="login" value="stackops"/&gt;
+        &lt;property name="password" value="stackops"/&gt;
+        &lt;property name="nova_volume_host" value="nexenta-san"/&gt;
+        &lt;property name="use_nexenta" value="false"/&gt;
+        &lt;property name="thin_provision" value="true"/&gt;
+        &lt;property name="use_local_volumes" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="auth_users"&gt;
+        &lt;property name="keystone_enabled" value="true"/&gt;
+        &lt;property name="admin_password" value="password"/&gt;
+        &lt;property name="default_usenamer" value="demo"/&gt;
+        &lt;property name="default_password" value="password"/&gt;
+        &lt;property name="default_tenant" value="demo"/&gt;
+      &lt;/service&gt;
+      &lt;service type="authentication"&gt;
+        &lt;property name="driver" 
+value="nova.auth.dbdriver.DbDriver"/&gt;
+        &lt;property name="use_project_ca" value="True"/&gt;
+      &lt;/service&gt;
+      &lt;service type="generic"&gt;
+        &lt;property name="nodaemon" value="True"/&gt;
+        &lt;property name="verbose" value="True"/&gt;
+        &lt;property name="lock_path" value="/tmp"/&gt;
+      &lt;/service&gt;
+      &lt;service type="logs"&gt;
+        &lt;property name="dir" value="/var/log/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="state"&gt;
+        &lt;property name="path" value="/var/lib/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="monitoring"&gt;
+        &lt;property name="collectd_listener" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+    &lt;/component&gt;
+    &lt;component name="network"&gt;
+      &lt;service type="dhcpbridge"&gt;
+        &lt;property name="process" 
+value="/var/lib/nova/bin/nova-dhcpbridge"/&gt;
+        &lt;property name="file" 
+value="/etc/nova/nova-network.conf"/&gt;
+      &lt;/service&gt;
+      &lt;service type="interfaces"&gt;
+        &lt;property name="routing_source_ip" value="192.168.10.32"/&gt;
+        &lt;property name="flat_interface" value="dummy0"/&gt;
+        &lt;property name="public_interface" value="eth0"/&gt;
+        &lt;property name="flat_injected" value="False"/&gt;
+        &lt;property name="floating_range" value="192.168.10.64/28"/&gt;
+      &lt;/service&gt;
+      &lt;service type="network"&gt;
+        &lt;property name="type" 
+value="nova.network.manager.FlatDHCPManager"/&gt;
+        &lt;property name="fixed_range" value="10.0.0.0/8"/&gt;
+        &lt;property name="network_size" value="256"/&gt;
+        &lt;property name="bridge" value="br100"/&gt;
+        &lt;property name="dns1" value="8.8.8.8"/&gt;
+        &lt;property name="dns2" value="8.8.4.4"/&gt;
+      &lt;/service&gt;
+      &lt;service type="infrastructure"&gt;
+        &lt;property name="mysql_username" value="root"/&gt;
+        &lt;property name="mysql_password" value="nova"/&gt;
+        &lt;property name="listen_port" value="3306"/&gt;
+        &lt;property name="install_mysql" value="true"/&gt;
+        &lt;property name="install_rabbitmq" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="nova"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="glance"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="keystone_database"&gt;
+        &lt;property name="username" value="root"/&gt;
+        &lt;property name="password" value="nova"/&gt;
+        &lt;property name="host" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="3306"/&gt;
+        &lt;property name="schema" value="keystone"/&gt;
+        &lt;property name="dropschema" value="true"/&gt;
+      &lt;/service&gt;
+      &lt;service type="ec2"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8773"/&gt;
+      &lt;/service&gt;
+      &lt;service type="osapi"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="8774"/&gt;
+      &lt;/service&gt;
+      &lt;service type="rabbitmq"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+      &lt;service type="horizon"&gt;
+        &lt;property name="enabled" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="s3"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="dmz" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="80"/&gt;
+        &lt;property name="dmz_port" value="3333"/&gt;
+      &lt;/service&gt;
+      &lt;service type="glance"&gt;
+        &lt;property name="hostname" value="192.168.10.32"/&gt;
+        &lt;property name="port" value="9292"/&gt;
+        &lt;property name="image_service" 
+value="nova.image.glance.GlanceImageService"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-glance"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="instances_filesystem"&gt;
+        &lt;property name="instances_path" 
+value="/var/lib/nova/instances"/&gt;
+        &lt;property name="mount_type" value="local"/&gt;
+        &lt;property name="mount_point" 
+value="0.0.0.0:/vol1/nfs-openstack-instances"/&gt;
+        &lt;property name="mount_parameters" value="defaults"/&gt;
+      &lt;/service&gt;
+      &lt;service type="scheduler"&gt;
+        &lt;property name="driver" 
+value="nova.scheduler.simple.SimpleScheduler"/&gt;
+        &lt;property name="max_cores" value="16"/&gt;
+        &lt;property name="max_networks" value="1000"/&gt;
+        &lt;property name="max_gigabytes" value="2048"/&gt;
+      &lt;/service&gt;
+      &lt;service type="nexenta_san"&gt;
+        &lt;property name="volume_driver" 
+value="nova.volume.san.NexentaISCSIDriver"/&gt;
+        &lt;property name="volume_group" value="vol1"/&gt;
+        &lt;property name="host" value="0.0.0.0"/&gt;
+        &lt;property name="login" value="stackops"/&gt;
+        &lt;property name="password" value="stackops"/&gt;
+        &lt;property name="nova_volume_host" value="nexenta-san"/&gt;
+        &lt;property name="use_nexenta" value="false"/&gt;
+        &lt;property name="thin_provision" value="true"/&gt;
+        &lt;property name="use_local_volumes" value="false"/&gt;
+      &lt;/service&gt;
+      &lt;service type="auth_users"&gt;
+        &lt;property name="keystone_enabled" value="true"/&gt;
+        &lt;property name="admin_password" value="password"/&gt;
+        &lt;property name="default_usenamer" value="demo"/&gt;
+        &lt;property name="default_password" value="password"/&gt;
+        &lt;property name="default_tenant" value="demo"/&gt;
+      &lt;/service&gt;
+      &lt;service type="authentication"&gt;
+        &lt;property name="driver" 
+value="nova.auth.dbdriver.DbDriver"/&gt;
+        &lt;property name="use_project_ca" value="True"/&gt;
+      &lt;/service&gt;
+      &lt;service type="generic"&gt;
+        &lt;property name="nodaemon" value="True"/&gt;
+        &lt;property name="verbose" value="True"/&gt;
+        &lt;property name="lock_path" value="/tmp"/&gt;
+      &lt;/service&gt;
+      &lt;service type="logs"&gt;
+        &lt;property name="dir" value="/var/log/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="state"&gt;
+        &lt;property name="path" value="/var/lib/nova"/&gt;
+      &lt;/service&gt;
+      &lt;service type="monitoring"&gt;
+        &lt;property name="collectd_listener" value="192.168.10.32"/&gt;
+      &lt;/service&gt;
+    &lt;/component&gt;
+  &lt;/cloud&gt;
+&lt;/node&gt;
+</textarea><br>
+                
+                <input name="continue" value="Start deployment now!" class="btn btn-green" id="continue" type="submit">
+			</form>
+		</div>
+	
+				</div>
+			</div>
+		</div>
+		<footer id="page-footer">
+			<div class="container_12 clearfix" style="text-align: center;">
+				© 2011 Stackops Technologies. All rights reserved. <a href="http://stackops.org/display/installercontent/Stackops+Terms+and+Conditions+of+Use" target="_blank">Terms &amp; Conditions</a>
+			</div>
+		</footer>
+		<script src="preview_files/ga_003.js" async="" type="text/javascript"></script><script src="preview_files/ga_002.js" async="" type="text/javascript"></script><script src="preview_files/ga.js" async="" type="text/javascript"></script><script type="text/javascript" src="preview_files/jquery.js"></script>
+
+		<script type="text/javascript" src="preview_files/jquery-ui.js"></script>
+
+		<script type="text/javascript" src="preview_files/jquery_003.js"></script>
+
+		<script type="text/javascript" src="preview_files/jquery_002.js"></script>
+
+		
+		<script type="text/javascript">
+
+
+		 var _gaq = _gaq || [];
+		 _gaq.push(['_setAccount', 'UA-21651960-2']);
+		 _gaq.push(['_trackPageview']);
+
+		 (function() {
+		   var ga = document.createElement('script'); ga.type =
+		'text/javascript'; ga.async = true;
+		   ga.src = ('https:' == document.location.protocol ? 'https://ssl' :
+		'http://www') + '.google-analytics.com/ga.js';
+		   var s = document.getElementsByTagName('script')[0];
+		s.parentNode.insertBefore(ga, s);
+		 })();
+
+		
+</script>
+
+    </body></html>

@@ -942,7 +942,8 @@ class NetworkConfig(Config):
                       'public_interface': self.public_interface,
                       'ec2_host': self.ec2_hostname,
                       'ec2_dmz_host': self.ec2_dmz,
-                      'flat_network_dhcp_start': self.flat_network_dhcp_start}
+                      'flat_network_dhcp_start': self.flat_network_dhcp_start,
+                      'override_bridge_interface': self.flat_interface}
 
         self._writeFile(self._filename, parameters)
         return

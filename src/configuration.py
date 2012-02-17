@@ -113,8 +113,8 @@ class Config(VanillaConfig):
         self._installDeb('unzip')
         self._installDeb('vlan')
         self._installDeb('open-iscsi')
-
-    #        self._installDeb('snmp')
+#        self._installDeb('collectd-core')
+#        self._installDeb('snmp')
 #        self._installDeb('snmpd')
 
 class ControllerConfig(Config):
@@ -909,6 +909,7 @@ class NetworkConfig(Config):
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface')
         self.public_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_interface')
         self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
+        self.bridged_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'bridged_interface', self.flat_interface)
         iface_list = self._operatingsystem.getNetworkConfiguration()
         for iface in iface_list:
             if iface['name'] == self.management_interface:
@@ -988,7 +989,7 @@ class NetworkConfig(Config):
             # create a small network
             utils.execute(
                 '/var/lib/nova/bin/nova-manage network create service %s 1 %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                self.fixed_range, self.network_size, self.bridge, self.flat_interface, self.dns1, self.dns2))
+                self.fixed_range, self.network_size, self.bridge, self.bridged_interface, self.dns1, self.dns2))
             # floating network
             utils.execute('/var/lib/nova/bin/nova-manage float create %s' % self.floating_range)
 
@@ -1491,9 +1492,9 @@ class Configurator(object):
             # configType = 1, 2, 4 multinode
             # configType = 8 dual o multinode (compute node)
 
-            # Deprecated.
-                    self._createCollectdConfigFile(configType,collectd_listener)
-                    utils.execute('service collectd restart')
+# Deprecated.
+#                    self._createCollectdConfigFile(configType,collectd_listener)
+#                    utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'

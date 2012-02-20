@@ -489,7 +489,7 @@ class ControllerConfig(Config):
                 cmd, self.glance_hostname, self.ec2_dmz, self.ec2_dmz))
             utils.execute(
                 "%s endpointTemplates add nova keystone http://%s:5000/v2.0 http://%s:35357/v2.0 http://%s:5000/v2.0 1 1" % (
-                cmd, self.ec2_dmz, self.ec2_dmz, self.ec2_dmz))
+                cmd, self.osapi_hostname, self.ec2_dmz, self.ec2_dmz))
 
             # Token
             utils.execute('%s token add 999888777666 admin admin 2015-02-05T00:00' % cmd)
@@ -579,8 +579,9 @@ class ControllerConfig(Config):
             self._installDeb('libldap2-dev')
             self._installDeb('libsasl2-dev')
             self._installDeb('python-passlib')
-#        if self.use_horizon:
-#            self._installDeb('git-core')
+        if self.use_horizon:
+            self._installDeb('python-virtualenv')
+            self._installDeb('python-pip')
         if self.glance_mount_type == 'nfs':
             self._installDeb('nfs-common')
 

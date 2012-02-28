@@ -230,8 +230,8 @@ class ControllerConfig(Config):
             self.admin_password = self._filler.getPropertyValue(xmldoc, 'authentication', 'admin_password', 'password')
             self.default_password = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_password',
                                                                   'password')
-            self.default_username = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_username', 'demo')
-            self.default_tenant = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_tenant', 'demo')
+            self.default_username = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_username', '')
+            self.default_tenant = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_tenant', '')
 
         # Configure Horizon
         self.use_horizon = self._filler.getPropertyValue(xmldoc, 'horizon', 'enabled', 'true') == 'true'
@@ -456,10 +456,15 @@ class ControllerConfig(Config):
 
             # Tenants
             utils.execute('%s tenant add admin' % cmd)
-            utils.execute('%s tenant add %s' % (cmd, self.default_tenant))
+            if (len(self.default_username)>0):
+                self.default_tenant = ''
+                utils.execute('%s tenant add %s' % (cmd, self.default_tenant))
+
             # Users
             utils.execute('%s user add admin %s' % (cmd, self.admin_password))
-            utils.execute('%s user add %s %s' % (cmd, self.default_username, self.default_password))
+            if (len(self.default_username)>0):
+                utils.execute('%s user add %s %s' % (cmd, self.default_username, self.default_password))
+
             # Roles
             utils.execute('%s role add Admin' % cmd)
             utils.execute('%s role add Member' % cmd)
@@ -468,10 +473,11 @@ class ControllerConfig(Config):
             utils.execute('%s role add sysadmin' % cmd)
             utils.execute('%s role add netadmin' % cmd)
             utils.execute('%s role grant Admin admin admin' % cmd)
-            utils.execute('%s role grant Member %s %s' % (cmd, self.default_username, self.default_tenant))
-            utils.execute('%s role grant sysadmin %s %s' % (cmd, self.default_username, self.default_tenant))
-            utils.execute('%s role grant netadmin %s %s' % (cmd, self.default_username, self.default_tenant))
-            utils.execute('%s role grant Admin admin %s' % (cmd, self.default_tenant))
+            if (len(self.default_username)>0):
+                utils.execute('%s role grant Member %s %s' % (cmd, self.default_username, self.default_tenant))
+                utils.execute('%s role grant sysadmin %s %s' % (cmd, self.default_username, self.default_tenant))
+                utils.execute('%s role grant netadmin %s %s' % (cmd, self.default_username, self.default_tenant))
+                utils.execute('%s role grant Admin admin %s' % (cmd, self.default_tenant))
             utils.execute('%s role grant Admin admin' % cmd)
             utils.execute('%s role grant KeystoneAdmin admin' % cmd)
             utils.execute('%s role grant KeystoneServiceAdmin admin' % cmd)
@@ -499,16 +505,18 @@ class ControllerConfig(Config):
             utils.execute("%s endpoint add admin 1" % cmd)
             utils.execute("%s endpoint add admin 2" % cmd)
             utils.execute("%s endpoint add admin 3" % cmd)
-            utils.execute("%s endpoint add %s 1" % (cmd, self.default_tenant))
-            utils.execute("%s endpoint add %s 2" % (cmd, self.default_tenant))
-            utils.execute("%s endpoint add %s 3" % (cmd, self.default_tenant))
+            if (len(self.default_username)>0):
+                utils.execute("%s endpoint add %s 1" % (cmd, self.default_tenant))
+                utils.execute("%s endpoint add %s 2" % (cmd, self.default_tenant))
+                utils.execute("%s endpoint add %s 3" % (cmd, self.default_tenant))
 
             # EC2 credentials
             utils.execute(
                 "%s credentials add admin EC2 'admin' '%s' admin || echo 'no support for adding credentials'" % (
                 cmd, self.admin_password))
-            utils.execute("%s credentials add %s EC2 '%s' '%s' %s || echo 'no support for adding credentials'" % (
-            cmd, self.default_username, self.default_username, self.default_password, self.default_tenant))
+            if (len(self.default_username)>0):
+                utils.execute("%s credentials add %s EC2 '%s' '%s' %s || echo 'no support for adding credentials'" % (
+                cmd, self.default_username, self.default_username, self.default_password, self.default_tenant))
 
     def _configureHorizon(self):
         if self.use_horizon:
@@ -903,6 +911,7 @@ class NetworkConfig(Config):
                                                              'nova.network.manager.FlatDHCPManager')
         self.fixed_range = self._filler.getPropertyValue(xmldoc, 'network', 'fixed_range', '10.0.0.0/8')
         self.network_size = self._filler.getPropertyValue(xmldoc, 'network', 'network_size', '256')
+        self.vlanstart = self._filler.getPropertyValue(xmldoc, 'network', 'vlanstart', '100')
         self.bridge = self._filler.getPropertyValue(xmldoc, 'network', 'bridge', 'br100')
         self.dns1 = self._filler.getPropertyValue(xmldoc, 'network', 'dns1', '8.8.8.8')
         self.dns2 = self._filler.getPropertyValue(xmldoc, 'network', 'dns2', '8.8.4.4')
@@ -923,6 +932,7 @@ class NetworkConfig(Config):
         self.public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip', '')
         self.public_ip_mask = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip_mask', '255.255.255.255')
         self.public_ip_gateway = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip_gateway', '')
+        self.firewall_public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'firewall_public_ip', 'false') == 'true'
 
         octets = self.fixed_range.split('/')[0].split('.')
         self.flat_network_dhcp_start = '%s.%s.%s.%i' % (octets[0], octets[1], octets[2], int(octets[3]) + 2)
@@ -941,15 +951,29 @@ class NetworkConfig(Config):
                       'dhcpbridge': self.dhcpbridge,
                       'dhcpbridge_flagfile': self.dhcpbridge_flagfile,
                       'routing_source_ip': self.routing_source_ip,
-                      'network_manager': self.network_manager,
                       'public_interface': self.public_interface,
+                      'network_manager': self.network_manager,
+                      'flat_network_dhcp_start': self.flat_network_dhcp_start,
                       'ec2_host': self.ec2_hostname,
                       'ec2_dmz_host': self.ec2_dmz,
-                      'flat_network_dhcp_start': self.flat_network_dhcp_start,
                       'override_bridge_interface': self.flat_interface}
 
         self._writeFile(self._filename, parameters)
         return
+
+    def _addFloatingIP(self,ip_list):
+        # Add floating ips
+        if ip_list.startswith('['):
+            ips = eval(ip_list)
+            for ip in ips:
+                utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (self.nova_host,self.nova_port, self.nova_username, self.nova_password,ip))
+        else:
+            utils.execute('/var/lib/nova/bin/nova-manage float create %s' % ip_list)
+
+    def _addFirewallRules(self, publicip):
+        shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules')
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules" % publicip)
+        utils.execute("service iptables-persistent stop; service iptables-persistent start", check_exit_code=False)
 
     def install(self, xmldoc, hostname):
         result = ''
@@ -989,11 +1013,20 @@ class NetworkConfig(Config):
                 utils.execute('route add default gw %s %s' % (self.public_ip_gateway, self.public_interface))
 
             # create a small network
-            utils.execute(
-                '/var/lib/nova/bin/nova-manage network create service %s 1 %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                self.fixed_range, self.network_size, self.bridge, self.bridged_interface, self.dns1, self.dns2))
+            if self.network_manager == 'nova.network.manager.VlanManager':
+                utils.execute(
+                    '/var/lib/nova/bin/nova-manage network create service %s 1 %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
+                        self.fixed_range, self.network_size, self.vlanstart, self.bridged_interface, self.dns1, self.dns2))
+            else:
+                utils.execute(
+                    '/var/lib/nova/bin/nova-manage network create service %s 1 %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
+                    self.fixed_range, self.network_size, self.bridge, self.bridged_interface, self.dns1, self.dns2))
             # floating network
-            utils.execute('/var/lib/nova/bin/nova-manage float create %s' % self.floating_range)
+            self._addFloatingIP(self.floating_range)
+
+            # add firewall to public ip if necessary
+            if self.firewall_public_ip and len(self.public_ip)>0:
+                self._addFirewallRules(self.public_ip)
 
             # enable ipforwarding
             utils.execute("sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf")
@@ -1012,6 +1045,7 @@ class NetworkConfig(Config):
         self._installDeb('bridge-utils')
         self._installDeb('dnsmasq-base')
         self._installDeb('iptables')
+        self._installDeb('iptables-persistent', interactive = False)
         self._installDeb('ebtables')
 
 
@@ -1332,6 +1366,12 @@ class Configurator(object):
         Constructor
         '''
 
+    def _installDeb(self, name, interactive=True):
+        if (interactive):
+            utils.execute('apt-get -y install %s' % name)
+        else:
+            utils.execute('DEBIAN_FRONTEND=noninteractive apt-get -y install %s' % name)
+
     def _changeHostname(self, hostname):
         # Change first the hostname
         utils.execute('hostname ' + hostname)
@@ -1411,8 +1451,13 @@ class Configurator(object):
             raise Exception("Error writing file. " + path + '/' + filename)
 
 
+    def _configureXymonServer(self, host):
+        # Change default ntp server to client choice
+        utils.execute('apt-get -y update')
+        self._installDeb('xymon-client', interactive = False)
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % host)
+        utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 
-            # Check the existing configuration files
 
     def detectConfiguration(self):
         cloud = None
@@ -1431,12 +1476,19 @@ class Configurator(object):
             self._changeHostname(hostname)
             configType = 0
             ntpServer = None
+            xymon_server = None
+            collectd_listener = None
             for component in xml.get_cloud().get_component():
                 if ntpServer == None: # Only once...
                     ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
                                                               'ntp.ubuntu.com')
                     self._configureNTPClient(ntpServer)
-                collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
+                if xymon_server == None: # Only once...
+                    xymon_server = self._filler.getPropertyValue(component, 'monitoring', 'xymon_server','')
+                    self._configureXymonServer(xymon_server)
+
+                if collectd_listener == None: # Only once...
+                    collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
                                                                   'localhost')
                 # Is a Controller?
                 if component.get_name() == 'controller':

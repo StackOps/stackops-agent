@@ -80,9 +80,6 @@ class Config(VanillaConfig):
     '''
 
     def installPackagesCommon(self):
-        utils.execute('sed -i /lucid-updates/d /etc/apt/sources.list')
-        utils.execute('sed -i /lucid-security/d /etc/apt/sources.list')
-        utils.execute('apt-get -y update')
         self._installDeb('python-software-properties')
         self._installDeb('python-sqlalchemy')
         self._installDeb('python-mox')
@@ -1366,6 +1363,11 @@ class Configurator(object):
         Constructor
         '''
 
+    def _removeRepos(self):
+        utils.execute('sed -i /lucid-updates/d /etc/apt/sources.list')
+        utils.execute('sed -i /lucid-security/d /etc/apt/sources.list')
+        utils.execute('apt-get -y update')
+
     def _installDeb(self, name, interactive=True):
         if (interactive):
             utils.execute('apt-get -y install %s' % name)
@@ -1453,7 +1455,6 @@ class Configurator(object):
 
     def _configureXymonServer(self, host):
         # Change default ntp server to client choice
-        utils.execute('apt-get -y update')
         self._installDeb('xymon-client', interactive = False)
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % host)
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
@@ -1470,6 +1471,7 @@ class Configurator(object):
         You must be root to execute this method
         """
         if getpass.getuser() == 'root':
+            self._removeRepos()
             # Change hostname from XML information
             hostname = xml.get_software().get_os().get_network().get_hostname()
             # Change hostname

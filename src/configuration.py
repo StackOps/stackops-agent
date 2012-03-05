@@ -823,7 +823,7 @@ class ComputeConfig(Config):
             aliases_content = ''.join(aliases_content)
         else:
             aliases_content = ''
-        aliases_content += 'alias bond0 bonding\nalias bond1 bonding\noptions bonding mode=4 miimon=100 max_bonds=2'
+        aliases_content += 'alias bond0 bonding\nalias bond1 bonding\noptions bonding mode=1 miimon=100 max_bonds=2'
         with open('/etc/modprobe.d/aliases.conf', 'w') as f:
             f.write(aliases_content)
 
@@ -1571,12 +1571,12 @@ iface eth1 inet manual
 
 auto bond0
 iface bond0 inet dhcp
-        bond-mode 4
+        bond-mode 1
         miimon 100
 
 auto bond1
 iface bond1 inet manual
-    bond-mode 4
+    bond-mode 1
     miimon 100
     post-up ifconfig $IFACE up
     pre-down ifconfig $IFACE down

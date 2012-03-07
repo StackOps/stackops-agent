@@ -224,11 +224,11 @@ class ControllerConfig(Config):
             self.keystone_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
             self.keystone_username, self.keystone_password, self.keystone_host, self.keystone_port,
             self.keystone_schema)
-            self.admin_password = self._filler.getPropertyValue(xmldoc, 'authentication', 'admin_password', 'password')
-            self.default_password = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_password',
+            self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+            self.default_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_password',
                                                                   'password')
-            self.default_username = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_username', '')
-            self.default_tenant = self._filler.getPropertyValue(xmldoc, 'authentication', 'default_tenant', '')
+            self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
+            self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
 
         # Configure Horizon
         self.use_horizon = self._filler.getPropertyValue(xmldoc, 'horizon', 'enabled', 'true') == 'true'

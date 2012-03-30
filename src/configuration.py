@@ -969,7 +969,7 @@ class NetworkConfig(Config):
 
     def _addFirewallRules(self, publicip):
         shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules.v4')
-        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules" % publicip)
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules.v4" % publicip)
         utils.execute("service iptables-persistent stop; service iptables-persistent start", check_exit_code=False)
 
     def install(self, xmldoc, hostname):

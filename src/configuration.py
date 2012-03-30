@@ -969,8 +969,8 @@ class NetworkConfig(Config):
             utils.execute('/var/lib/nova/bin/nova-manage float create %s' % ip_list)
 
     def _addFirewallRules(self, publicip):
-        shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules')
-        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules" % publicip)
+        shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules.v4')
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules.v4" % publicip)
         utils.execute("service iptables-persistent stop; service iptables-persistent start", check_exit_code=False)
 
     def install(self, xmldoc, hostname):

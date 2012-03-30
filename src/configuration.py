@@ -590,6 +590,7 @@ class ControllerConfig(Config):
             self._installDeb('python-pip')
         if self.glance_mount_type == 'nfs':
             self._installDeb('nfs-common')
+        self._installDeb('python-numpy')
 
 
 class ComputeConfig(Config):

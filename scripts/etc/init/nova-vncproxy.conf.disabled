@@ -25,6 +25,8 @@ env NOVA_APP=nova-vncproxy
 env NOVA_CONF=/etc/nova/nova-controller.conf
 env NOVA_LOG=/var/log/nova
 
-chdir /var/lib/nova
+#chdir /var/lib/nova
+chdir /var/lib/nova/noVNC
 
-exec su -c "$NOVA_DIR/$NOVA_APP --flagfile=$NOVA_CONF" >> $NOVA_LOG/$NOVA_APP.log 2>&1
+#exec su -c "$NOVA_DIR/$NOVA_APP --flagfile=$NOVA_CONF" >> $NOVA_LOG/$NOVA_APP.log 2>&1
+exec su -c "export PYTHONPATH=/var/lib/nova; /var/lib/nova/noVNC/utils/nova-wsproxy.py --flagfile $NOVA_CONF --web . 6080" >> $NOVA_LOG/$NOVA_APP.log 2>&1

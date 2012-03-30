@@ -517,19 +517,29 @@ class ControllerConfig(Config):
 
     def _configureHorizon(self):
         if self.use_horizon:
+            self._configure_pip()
             utils.execute("easy_install /opt/pip_downloads/httplib2-0.6.0.tar.gz")
-            utils.execute("easy_install /opt/pip_downloads/prettytable-0.5.zip")
+            utils.execute("easy_install /opt/pip_downloads/prettytable-0.5.tar.gz")
             utils.execute("easy_install /opt/pip_downloads/argparse-1.1.zip")
-            utils.execute(
-                'cd /var/lib/openstack.compute; python setup.py develop')
-            utils.execute(
-                'export PIP_DOWNLOAD_CACHE=/opt/pip_downloads; cd /var/lib/openstackx; python setup.py develop')
-            utils.execute(
-                'export PIP_DOWNLOAD_CACHE=/opt/pip_downloads; cd /var/lib/horizon/openstack-dashboard; python tools/install_venv.py')
+            utils.execute("easy_install /opt/pip_downloads/virtualenv-1.7.1.2.tar.gz")
+            utils.execute('cd /var/lib/openstack.compute; python setup.py develop')
+            utils.execute('cd /var/lib/openstackx; python setup.py develop')
+            utils.execute('cd /var/lib/horizon/openstack-dashboard; python tools/install_venv.py')
             utils.execute('cd /var/lib/horizon/openstack-dashboard; tools/with_venv.sh dashboard/manage.py syncdb')
-            shutil.copyfile('/var/lib/stackops/django.wsgi',
-                            '/var/lib/horizon/openstack-dashboard/dashboard/wsgi/django.wsgi')
+            shutil.copyfile(
+                '/var/lib/stackops/django.wsgi',
+                '/var/lib/horizon/openstack-dashboard/dashboard/wsgi/django.wsgi'
+            )
             utils.execute('chown -R stackops:stackops /var/lib/horizon')
+
+    def _configure_pip(self):
+        if not os.path.exists('/root/.pip'):
+            os.mkdir('/root/.pip')
+        with open('/root/.pip/pip.conf', 'w') as f:
+            f.write('''[global]
+find-links = file:///opt/pip_downloads/
+mirror = file:///opt/pip_downloads/
+no_index = True''')
 
     def install(self, xmldoc, hostname):
         """
@@ -969,7 +979,7 @@ class NetworkConfig(Config):
 
     def _addFirewallRules(self, publicip):
         shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules.v4')
-        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules" % publicip)
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules.v4" % publicip)
         utils.execute("service iptables-persistent stop; service iptables-persistent start", check_exit_code=False)
 
     def install(self, xmldoc, hostname):

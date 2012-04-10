@@ -27,6 +27,7 @@ import os, os.path
 import shutil
 import re
 import time
+import base64
 from twisted.python import log
 
 class VanillaConfig(object):
@@ -121,6 +122,8 @@ class ControllerConfig(Config):
     '''
 
     _filename = "nova-controller.conf"
+    TOKEN_SIZE = 12
+    TOKEN = None
 
     def __init__(self):
         '''
@@ -252,6 +255,18 @@ class ControllerConfig(Config):
         self.vncproxy_port = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'port', '6080')
         self.vncproxy_type = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'type', 'http')
 
+        # Quotas
+        self.quota_instances = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_instances', '4096')
+        self.quota_cores = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_cores', '8192')
+        self.quota_ram = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_ram', str(1024 * 1024 * 20))
+        self.quota_volumes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_volumes', '8192')
+        self.quota_gigabytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_gigabytes', str(1024 * 20))
+        self.quota_floating_ips = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_floating_ips', '254')
+        self.quota_metadata_items = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_metadata_items', '128')
+        self.quota_max_injected_files = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_files', '5')
+        self.quota_max_injected_file_content_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_content_bytes', str(10*1024))
+        self.quota_max_injected_file_path_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_path_bytes', '255')
+
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,
                       'nodaemon': self.nodaemon,
@@ -280,7 +295,18 @@ class ControllerConfig(Config):
                       'api_paste_config': self.api_paste_config,
                       'allow_admin_api': 'true',
                       'osapi_extensions_path': '/var/lib/openstackx/extensions',
-                      'vncproxy_url': '%s://%s:%s' % (self.vncproxy_type, self.vncproxy_host, self.vncproxy_port)}
+                      'vncproxy_url': '%s://%s:%s' % (self.vncproxy_type, self.vncproxy_host, self.vncproxy_port),
+                      'quota_instances' : self.quota_instances,
+                      'quota_cores' : self.quota_cores,
+                      'quota_ram' : self.quota_ram,
+                      'quota_volumes' : self.quota_volumes,
+                      'quota_gigabytes' : self.quota_gigabytes,
+                      'quota_floating_ips' : self.quota_floating_ips,
+                      'quota_metadata_items' : self.quota_metadata_items,
+                      'quota_max_injected_files' : self.quota_max_injected_files,
+                      'quota_max_injected_file_content_bytes' : self.quota_max_injected_file_content_bytes,
+                      'quota_max_injected_file_path_bytes' : self.quota_max_injected_file_path_bytes}
+
 
         self._writeFile(self._filename, parameters)
         return
@@ -328,6 +354,9 @@ class ControllerConfig(Config):
         # create the database
         utils.execute('/var/lib/nova/bin/nova-manage db sync')
         # create an admin user called 'admin'
+
+    def _generateToken(self):
+        return os.urandom(self.TOKEN_SIZE).encode("hex")
 
     def _deleteFlavors(self):
         # Get flavors
@@ -434,9 +463,13 @@ class ControllerConfig(Config):
         utils.execute(
             "sed -i 's,sqlite:////var/lib/glance/glance.sqlite,%s,g' /etc/glance/glance-scrubber.conf" % self.glance_sql_connection)
         utils.execute("sed -i 's@daemon = False@daemon = True@g' /etc/glance/glance-scrubber.conf")
+        utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-api.conf" % self.TOKEN)
+        utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-registry.conf" % self.TOKEN)
 
     def _configureKeystone(self):
         if self.use_keystone:
+            # Token
+            self.TOKEN = self._generateToken()
             # Configure keystone
             utils.execute('ln -s /var/lib/keystone/keystone /var/lib/nova/keystone', check_exit_code=False)
             utils.execute('ln -s /var/lib/keystone/etc/keystone.conf /etc/keystone/keystone.conf',
@@ -446,6 +479,8 @@ class ControllerConfig(Config):
                 "sed -i 's@log_file = keystone.log@log_file = /var/log/keystone/keystone.log@g' /etc/keystone/keystone.conf")
             utils.execute(
                 "sed -i 's,sqlite:///keystone.db,%s,g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
+            utils.execute(
+                "sed -i 's/admin_token = .*/admin_token = %s/g' %s" % (self.TOKEN,self.api_paste_config))
             utils.execute('cd /var/lib/keystone; python setup.py build')
             utils.execute('cd /var/lib/keystone; python setup.py install')
 
@@ -495,8 +530,7 @@ class ControllerConfig(Config):
                 "%s endpointTemplates add nova keystone http://%s:5000/v2.0 http://%s:35357/v2.0 http://%s:5000/v2.0 1 1" % (
                 cmd, self.osapi_hostname, self.ec2_dmz, self.ec2_dmz))
 
-            # Token
-            utils.execute('%s token add 999888777666 admin admin 2015-02-05T00:00' % cmd)
+            utils.execute('%s token add %s admin admin 2015-02-05T00:00' % (cmd,self.TOKEN))
 
             # endpoint
             utils.execute("%s endpoint add admin 1" % cmd)
@@ -554,8 +588,8 @@ no_index = True''')
                 self._configureApache()
                 self._configCerts()
                 self._configureNovaManage()
-                self._configureGlance()
                 self._configureKeystone()
+                self._configureGlance()
                 self._configureHorizon()
                 self._createNovaDatabase()
                 if self.set_flavors:
@@ -614,6 +648,8 @@ class ComputeConfig(Config):
         '''
         Constructor
         '''
+        self.PAGE_SIZE = 2 * 1024 * 1024
+        self.BONUS_PAGES = 40
 
     # Write the parameters (if possible) from the xml file
     def write(self, xmldoc):
@@ -693,6 +729,9 @@ class ComputeConfig(Config):
         self.libvirt_use_virtio_for_bridges = self._filler.getPropertyValue(xmldoc, 'libvirt',
                                                                             'libvirt_use_virtio_for_bridges', 'false')
 
+        self.hugepages = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages', 'false') == 'true'
+        self.hugepages_percentage = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages_percentage', '100')
+
         # GLANCE Service configuration
         self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', 'localhost')
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
@@ -750,6 +789,9 @@ class ComputeConfig(Config):
 
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
+        if os.path.ismount(self.volumes_path):
+            utils.execute('umount %s' % self.volumes_path)
+        utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0'  % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
         utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
@@ -761,7 +803,41 @@ class ComputeConfig(Config):
         if (self.storage_hostname != 'nova-controller'):
             utils.execute('echo "\n' + self.iscsi_ip_prefix + '\t' + self.storage_hostname + '" >> /etc/hosts')
 
-    def _configureLibvirt(self):
+    def _configureHugePages(self):
+        # enable huge pages in the system
+        machine = install.Machine()
+        pages = (0.01 * int(self.hugepages_percentage) * (machine.getMemoryAvailable() / (self.PAGE_SIZE))) + self.BONUS_PAGES
+
+        utils.execute("mkdir /dev/hugepages",check_exit_code=False)
+        utils.execute('sed -i /hugetlbfs/d /etc/fstab')
+        utils.execute('echo "hugetlbfs       /dev/hugepages  hugetlbfs       defaults        0 0\n" >> /etc/fstab')
+        utils.execute('mount -t hugetlbfs hugetlbfs /dev/hugepages')
+
+        utils.execute('echo "vm.nr_hugepages = %s" > /etc/sysctl.d/60-hugepages.conf' % pages)
+        utils.execute('sysctl vm.nr_hugepages=%s' % pages)
+        utils.execute("sysctl -p /etc/sysctl.conf")
+
+        # modify libvirt template to enable hugepages
+        utils.execute("sed '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
+        utils.execute("sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
+
+    def _disableSwap(self):
+        utils.execute('sed -i /swap/d /etc/fstab')
+        utils.execute('swapoff -a', check_exit_code=False)
+
+    def _configureApparmor(self):
+        utils.execute("sed '/hugepages/d' /etc/apparmor.d/abstractions/libvirt-qemu")
+        utils.execute("echo ' owner /dev/hugepages/libvirt/qemu/* rw,' >> /etc/apparmor.d/abstractions/libvirt-qemu")
+
+    def _configureLibvirt(self,hostname):
+        # share libvirt configuration to restore compute nodes
+        if self.instances_filesystem_mount_type == 'nfs':
+            path = '%s/libvirt/%s' % (self.instances_path, hostname)
+            if not os.path.exists(path):
+                utils.execute('mkdir -p %s' % path, check_exit_code=False)
+                utils.execute('cp -fR /etc/libvirt/* %s/'  % path,check_exit_code=False)
+            utils.execute('rm -fR /etc/libvirt',check_exit_code=False)
+            utils.execute('ln -s %s /etc/libvirt' % path,check_exit_code=False)
         # enable communication to libvirt
         utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
         utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
@@ -793,16 +869,22 @@ class ComputeConfig(Config):
     def install(self, xmldoc, hostname):
         result = ''
         try:
+            if hostname != 'nova-controller':
+                self._disableSwap()
+            if self.hugepages and hostname != 'nova-controller':
+                self._configureHugePages()
             self.installPackages() # Install packages for component
+
             self._configureFlatInterface(hostname) # Configure Flat Interface
             self._configureLinkAggregation() # NIC Bonding
-
+            if self.hugepages and hostname != 'nova-controller':
+                self._configureApparmor()
             if self.use_volume_nfs:
                 self._configureVolumeNFS() # Configure Volume NFS
             self._configureNFS() # Configure NFS
             self._configureGlusterFS() # Configure GlusterFS
             self._configureNovaVolumeHost() # Configure NovaVolume host name
-            self._configureLibvirt() # Enable Libvirt communication
+            self._configureLibvirt(hostname) # Enable Libvirt communication
             self._configureInitServices()
             self._restartServices()
         except  Exception as inst:
@@ -1329,6 +1411,9 @@ class QEMUVolumeConfig(Config):
 
     def _configureNFS(self):
         # configure NFS mount
+        if os.path.ismount(self.volumes_path):
+            utils.execute('umount %s' % self.volumes_path)
+        utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.volumes_path, self.mount_parameters)
         utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
@@ -1470,6 +1555,10 @@ class Configurator(object):
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % host)
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 
+    def _blacklistFb(self):
+        # Blacklist framebuffer
+        utils.execute('sed -i /vga16fb/d /etc/modprobe.d/blacklist-framebuffer.conf ')
+        utils.execute('echo "blacklist vga16fb" >> /etc/modprobe.d/blacklist-framebuffer.conf ')
 
     def detectConfiguration(self):
         cloud = None
@@ -1482,6 +1571,7 @@ class Configurator(object):
         You must be root to execute this method
         """
         if getpass.getuser() == 'root':
+            self._blacklistFb()
             self._removeRepos()
             # Change hostname from XML information
             hostname = xml.get_software().get_os().get_network().get_hostname()
@@ -1498,8 +1588,8 @@ class Configurator(object):
                     self._configureNTPClient(ntpServer)
                 if xymon_server == None: # Only once...
                     xymon_server = self._filler.getPropertyValue(component, 'monitoring', 'xymon_server','')
-                    self._configureXymonServer(xymon_server)
-
+                    if len(xymon_server)>0:
+                        self._configureXymonServer(xymon_server)
                 if collectd_listener == None: # Only once...
                     collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
                                                                   'localhost')

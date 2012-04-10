@@ -1656,6 +1656,7 @@ class Configurator(object):
         else:
             return 'You should run this program as super user.'
 
+# This is a test
 # Templates for simple config-files generation.
 templates = {
 
@@ -1691,3 +1692,4 @@ iface %(iface)s inet manual
     """,
 
 }
+

@@ -16,7 +16,13 @@
 
 # Original code from www.devstack.org
 
-SERVICE_TOKEN=999888777666
+HOST_IP=${HOST:-127.0.0.1}
+NOVA_TENANT_ID=${TENANT:-1}
+NOVA_USERNAME=${USERNAME:-admin}
+NOVA_API_KEY=${ADMIN_PASSWORD:-password}
+
+SERVICE_TOKEN=`curl -s -d "{\"auth\":{\"passwordCredentials\": {\"username\": \"$NOVA_USERNAME\", \"password\": \"$NOVA_API_KEY\"}, \"tenantId\": \"$NOVA_TENANT_ID\"}}" -H "Content-type: application/json" http://$HOST_IP:5000/v2.0/tokens | python -c "import sys; import json; tok = json.loads(sys.stdin.read()); print tok['access']['token']['id'];"`
+
 IMAGE_NAME='debian-6.0.4-amd64.img'
 echo "Downloading images..."
 wget http://stackops.s3.amazonaws.com/images/$IMAGE_NAME.tar.gz -O /tmp/$IMAGE_NAME.tar.gz

@@ -40,6 +40,7 @@ import status
 _target = 'installer.stackops.org'
 #_target = 'installer.qa.stackops.org/stackops'
 _port = 8888
+_status_file = '/etc/nova/CONFIG_STATUS'
 
 def terminate():
     time.sleep(10)
@@ -122,17 +123,17 @@ class Root(ThreadedResource):
 
     def POST(self, request):
         try:
-            with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+            with open(_status_file, 'w') as f:
                 f.write('CONFIGURING')
             str = request.args['sysinfo'][0]
             log.msg(str)
             result = importConfiguration(self._configurator,str)
             if len(result)==0:
-                with open('/etc/nova/CONFIG_STATUS', 'w') as f:
-                    f.write('READY')
+                with open(_status_file, 'w') as f:
+                    f.write(READY)
                 return showConfigDone()
             else:
-                os.remove('/etc/nova/CONFIG_STATUS')
+                os.remove(_status_file)
                 request.setResponseCode(500)
                 return showError(result)
         except:
@@ -167,17 +168,17 @@ class GetConfiguration(ThreadedResource):
 
     def POST(self, request):
         try:
-            with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+            with open(_status_file, 'w') as f:
                 f.write('CONFIGURING')
             str = request.content.read()
             log.msg(str)
             result = importConfiguration(self._configurator,str)
             if len(result)==0:
-                with open('/etc/nova/CONFIG_STATUS', 'w') as f:
+                with open(_status_file, 'w') as f:
                     f.write('READY')
                 return showConfigDone()
             else:
-                os.remove('/etc/nova/CONFIG_STATUS')
+                os.remove(_status_file)
                 request.setResponseCode(500)
                 return showError(result)
         except:
@@ -232,4 +233,9 @@ if __name__ == '__main__':
     log.msg('Starting server: %s' %str(datetime.now()))
     site = server.Site(root)
     reactor.listenTCP(_port, site)
+    try:
+        if 'CONFIGURING' in open(_status_file).read():
+            os.remove(_status_file)
+    except:
+        pass
     reactor.run()

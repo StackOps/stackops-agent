@@ -130,7 +130,7 @@ class Root(ThreadedResource):
             result = importConfiguration(self._configurator,str)
             if len(result)==0:
                 with open(_status_file, 'w') as f:
-                    f.write(READY)
+                    f.write('READY')
                 return showConfigDone()
             else:
                 os.remove(_status_file)

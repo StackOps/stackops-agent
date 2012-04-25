@@ -1462,6 +1462,8 @@ class Configurator(object):
     def _removeRepos(self):
         utils.execute('sed -i /lucid-updates/d /etc/apt/sources.list')
         utils.execute('sed -i /lucid-security/d /etc/apt/sources.list')
+        utils.execute('sed -i /archive.ubuntu.com/d /etc/apt/sources.list')
+        utils.execute('rm /etc/apt/sources.list.d/stackops.list || true')
         utils.execute('apt-get -y update')
 
     def _installDeb(self, name, interactive=True):

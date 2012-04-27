@@ -431,15 +431,13 @@ class ControllerConfig(Config):
         utils.execute('ln -s /etc/nova/nova-controller.conf /var/lib/nova/bin/nova.conf')
 
     def _configureApache(self):
-        # enabled proxy files
-        utils.execute('ln -s /etc/apache2/mods-available/proxy.conf /etc/apache2/mods-enabled/proxy.conf',
-                      check_exit_code=False)
-        utils.execute('ln -s /etc/apache2/mods-available/proxy.load /etc/apache2/mods-enabled/proxy.load',
-                      check_exit_code=False)
-        utils.execute('ln -s /etc/apache2/mods-available/proxy_http.load /etc/apache2/mods-enabled/proxy_http.load',
-                      check_exit_code=False)
+        utils.execute('a2enmod proxy_http')
+        utils.execute('a2enmod ssl')
+        utils.execute('a2enmod rewrite')
+        utils.execute('a2ensite default-ssl')
         if self.use_horizon:
             shutil.copyfile('/var/lib/stackops/apache_default.conf', '/etc/apache2/sites-available/default')
+            shutil.copyfile('/var/lib/stackops/apachessl_default.conf', '/etc/apache2/sites-available/default-ssl')
         else:
             shutil.copyfile('/var/lib/stackops/apache_default_no_wsgi.conf', '/etc/apache2/sites-available/default')
 

@@ -9,6 +9,5 @@
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 5000 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 9292 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 443 -j ACCEPT
--A INPUT -d 127.0.0.1/32 -j REJECT --reject-with icmp-port-unreachable
 COMMIT
 # Completed on Tue Feb 28 15:37:55 2012

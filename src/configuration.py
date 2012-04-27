@@ -435,6 +435,8 @@ class ControllerConfig(Config):
         utils.execute('a2enmod ssl')
         utils.execute('a2enmod rewrite')
         utils.execute('a2ensite default-ssl')
+        shutil.copyfile('/var/lib/stackops/acens.crt', '/etc/ssl/certs/acens.crt')
+        shutil.copyfile('/var/lib/stackops/acens.key', '/etc/ssl/private/acens.key')
         if self.use_horizon:
             shutil.copyfile('/var/lib/stackops/apache_default.conf', '/etc/apache2/sites-available/default')
             shutil.copyfile('/var/lib/stackops/apachessl_default.conf', '/etc/apache2/sites-available/default-ssl')

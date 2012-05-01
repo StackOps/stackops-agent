@@ -806,7 +806,7 @@ class ComputeConfig(Config):
     def _configureHugePages(self):
         # enable huge pages in the system
         machine = install.Machine()
-        pages = (0.01 * int(self.hugepages_percentage) * (machine.getMemoryAvailable() / (self.PAGE_SIZE))) + self.BONUS_PAGES
+        pages = int(0.01 * int(self.hugepages_percentage) * int(machine.getMemoryAvailable() / self.PAGE_SIZE)) + self.BONUS_PAGES
 
         utils.execute("mkdir /dev/hugepages",check_exit_code=False)
         utils.execute('sed -i /hugetlbfs/d /etc/fstab')
@@ -818,7 +818,7 @@ class ComputeConfig(Config):
         utils.execute("sysctl -p /etc/sysctl.conf")
 
         # modify libvirt template to enable hugepages
-        utils.execute("sed '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
+        utils.execute("sed -i '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
         utils.execute("sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
 
     def _disableSwap(self):
@@ -826,8 +826,8 @@ class ComputeConfig(Config):
         utils.execute('swapoff -a', check_exit_code=False)
 
     def _configureApparmor(self):
-        utils.execute("sed '/hugepages/d' /etc/apparmor.d/abstractions/libvirt-qemu")
-        utils.execute("echo ' owner /dev/hugepages/libvirt/qemu/* rw,' >> /etc/apparmor.d/abstractions/libvirt-qemu")
+        utils.execute("sed -i '/hugepages/d' /etc/apparmor.d/abstractions/libvirt-qemu")
+        utils.execute("echo '  owner /dev/hugepages/libvirt/qemu/* rw,' >> /etc/apparmor.d/abstractions/libvirt-qemu")
 
     def _configureLibvirt(self,hostname):
         # share libvirt configuration to restore compute nodes

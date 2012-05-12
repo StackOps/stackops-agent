@@ -267,6 +267,9 @@ class ControllerConfig(Config):
         self.quota_max_injected_file_content_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_content_bytes', str(10*1024))
         self.quota_max_injected_file_path_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_path_bytes', '255')
 
+        # Install Open VM Tools
+        self.open_vm_tools = self._filler.getPropertyValue(xmldoc, 'hardening', 'open-vm-tools', 'false') == 'true'
+
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,
                       'nodaemon': self.nodaemon,
@@ -604,6 +607,8 @@ no_index = True''')
 
     def installPackages(self):
         self.installPackagesCommon()
+        if self.open_vm_tools:
+            self._installDeb('open-vm-tools')
         self._installDeb('euca2ools')
         self._installDeb('cloud-utils')
         self._installDeb('glance')

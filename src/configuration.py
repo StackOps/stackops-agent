@@ -268,7 +268,7 @@ class ControllerConfig(Config):
         self.quota_max_injected_file_path_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_path_bytes', '255')
 
         # Install Open VM Tools
-        self.open_vm_tools = self._filler.getPropertyValue(xmldoc, 'hardening', 'open-vm-tools', 'false') == 'true'
+        self.open_vm_tools = self._filler.getPropertyValue(xmldoc, 'hardening', 'open-vm-tools', 'true') == 'true'
 
         parameters = {'lock_path': self.lock_path,
                       'verbose': self.verbose,
@@ -737,12 +737,13 @@ class ComputeConfig(Config):
         self.hugepages = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages', 'false') == 'true'
         self.hugepages_percentage = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages_percentage', '100')
 
+        self.minimum_root_size = self._filler.getPropertyValue(xmldoc, 'libvirt', 'minimum_root_size', '1')
+
         # GLANCE Service configuration
         self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', 'localhost')
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
         self.image_service = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service',
                                                            'nova.image.glance.GlanceImageService')
-
         # Bonding configurarion
         self.management_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_network_bond')
         self.service_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'service_network_bond')
@@ -758,6 +759,7 @@ class ComputeConfig(Config):
                       'use_project_ca': self.use_project_ca,
                       'my_ip': self.my_ip,
                       # NOVA-COMPUTE SPECIFIC
+                      'minimum_root_size': self.minimum_root_size,
                       'volume_driver': self.volume_driver,
                       'image_service': self.image_service,
                       'glance_api_servers': '%s:%s' % (self.glance_hostname, self.glance_port),

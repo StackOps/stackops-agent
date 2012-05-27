@@ -1067,9 +1067,10 @@ class NetworkConfig(Config):
         else:
             utils.execute('/var/lib/nova/bin/nova-manage float create %s' % ip_list)
 
-    def _addFirewallRules(self, publicip):
+    def _addFirewallRules(self, publicip, bridgeif):
         shutil.copyfile('/var/lib/stackops/rules.iptables', '/etc/iptables/rules.v4')
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/iptables/rules.v4" % publicip)
+        utils.execute("sed -i 's/BRIDGEIF/%s/g' /etc/iptables/rules.v4" % bridgeif)
         utils.execute("service iptables-persistent stop; service iptables-persistent start", check_exit_code=False)
 
     def install(self, xmldoc, hostname):
@@ -1110,10 +1111,12 @@ class NetworkConfig(Config):
                 utils.execute('route add default gw %s %s' % (self.public_ip_gateway, self.public_interface))
 
             # create a small network
+            bridgeif = 'br100'
             if self.network_manager == 'nova.network.manager.VlanManager':
                 utils.execute(
                     '/var/lib/nova/bin/nova-manage network create service %s 1 %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
                         self.fixed_range, self.network_size, self.vlanstart, self.bridged_interface, self.dns1, self.dns2))
+                bridgeif = 'br%s' % self.vlanstart
             else:
                 utils.execute(
                     '/var/lib/nova/bin/nova-manage network create service %s 1 %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
@@ -1123,7 +1126,7 @@ class NetworkConfig(Config):
 
             # add firewall to public ip if necessary
             if self.firewall_public_ip and len(self.public_ip)>0:
-                self._addFirewallRules(self.public_ip)
+                self._addFirewallRules(self.public_ip, bridgeif)
 
             # enable ipforwarding
             utils.execute("sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf")
@@ -1558,9 +1561,10 @@ class Configurator(object):
             raise Exception("Error writing file. " + path + '/' + filename)
 
 
-    def _configureXymonServer(self, host):
+    def _configureXymonServer(self, domain_name):
         # Change default ntp server to client choice
         self._installDeb('xymon-client', interactive = False)
+        host = domain_name.split('.')[0]
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % host)
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 

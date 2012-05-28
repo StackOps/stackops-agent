@@ -9,18 +9,14 @@
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 5000 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 9292 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 443 -j ACCEPT
--A INPUT -i BRIDGEIF -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 3306 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 35357 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 5672 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 54255 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 111 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 52528 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 4369 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 56981 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p tcp --dport 8888 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p udp --dport 42711 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p udp --dport 866 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
--A INPUT -i BRIDGEIF -p udp --dport 111 -m state --state NEW,ESTABLISHED -j REJECT --reject-with icmp-port-unreachable
+-A INPUT -d 127.0.0.1/32 -p icmp -m icmp -j ACCEPT
+-A INPUT -d 127.0.0.1/32 -j DROP
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 443 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 80 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 6080 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 843 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 5000 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 9292 -j ACCEPT
+-A INPUT -i BRIDGEIF -j DROP
 COMMIT
 # Completed on Tue Feb 28 15:37:55 2012

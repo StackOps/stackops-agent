@@ -1573,6 +1573,26 @@ class Configurator(object):
         utils.execute('sed -i /vga16fb/d /etc/modprobe.d/blacklist-framebuffer.conf ')
         utils.execute('echo "blacklist vga16fb" >> /etc/modprobe.d/blacklist-framebuffer.conf ')
 
+    def _publishKeys(self, authorized_keys, root_pass="", stackops_pass=""):
+        # Publish keys and do not allow ssh user and pass
+        if len(authorized_keys)>0:
+            utils.execute("su stackops -c 'rm -fR ~/.ssh'",check_exit_code=False)
+            utils.execute("su stackops -c 'mkdir ~/.ssh'",check_exit_code=False)
+            utils.execute("su stackops -c 'chmod 700 ~/.ssh'")
+            utils.execute("su stackops -c 'echo \"%s\" > /home/stackops/.ssh/authorized_keys'" % authorized_keys)
+            utils.execute("su stackops -c 'chmod 600 ~/.ssh/authorized_keys'")
+            utils.execute("sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config ")
+            utils.execute("sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config ")
+            utils.execute("sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config ")
+            utils.execute("sed -i 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config ")
+            utils.execute("sed -i 's/%sudo ALL=(ALL) ALL/%sudo ALL=(ALL) NOPASSWD:ALL/g' /etc/sudoers")
+            utils.execute("adduser stackops sudo")
+            utils.execute("service ssh restart")
+        if len(root_pass)>0:
+            utils.execute("echo 'root:%s'|chpasswd" % root_pass)
+        if len(stackops_pass)>0:
+            utils.execute("echo 'stackops:%s'|chpasswd" % stackops_pass)
+
     def detectConfiguration(self):
         cloud = None
         node = self._filler.createNode(cloud)
@@ -1594,7 +1614,13 @@ class Configurator(object):
             ntpServer = None
             xymon_server = None
             collectd_listener = None
+            authorized_keys = None
             for component in xml.get_cloud().get_component():
+                if authorized_keys is None: # Only once...
+                    authorized_keys = self._filler.getPropertyValue(component, 'hardening', 'authorized_keys','')
+                    root_pass = self._filler.getPropertyValue(component, 'hardening', 'root_password','')
+                    stackops_pass = self._filler.getPropertyValue(component, 'hardening', 'stackops_password','')
+                    self._publishKeys(authorized_keys,root_pass,stackops_pass)
                 if ntpServer == None: # Only once...
                     ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
                                                               'ntp.ubuntu.com')

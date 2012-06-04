@@ -1579,6 +1579,7 @@ class Configurator(object):
             utils.execute("su stackops -c 'rm -fR ~/.ssh'",check_exit_code=False)
             utils.execute("su stackops -c 'mkdir ~/.ssh'",check_exit_code=False)
             utils.execute("su stackops -c 'chmod 700 ~/.ssh'")
+            authorized_keys = authorized_keys.replace(',','\n')
             utils.execute("su stackops -c 'echo \"%s\" > /home/stackops/.ssh/authorized_keys'" % authorized_keys)
             utils.execute("su stackops -c 'chmod 600 ~/.ssh/authorized_keys'")
             utils.execute("sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config ")
@@ -1586,6 +1587,8 @@ class Configurator(object):
             utils.execute("sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config ")
             utils.execute("sed -i 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config ")
             utils.execute("sed -i 's/%sudo ALL=(ALL) ALL/%sudo ALL=(ALL) NOPASSWD:ALL/g' /etc/sudoers")
+            with open('/etc/ssh/sshd_config', 'a') as ssh_config:
+                ssh_config.write('\nUseDNS no')
             utils.execute("adduser stackops sudo")
             utils.execute("service ssh restart")
         if len(root_pass)>0:

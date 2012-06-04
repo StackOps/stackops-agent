@@ -17,6 +17,14 @@
 -A INPUT -i BRIDGEIF -p tcp -m tcp --dport 843 -j ACCEPT
 -A INPUT -i BRIDGEIF -p tcp -m tcp --dport 5000 -j ACCEPT
 -A INPUT -i BRIDGEIF -p tcp -m tcp --dport 9292 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 8775 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 8773 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 8774 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 3333 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 68 -j ACCEPT
+-A INPUT -i BRIDGEIF -p tcp -m tcp --dport 67 -j ACCEPT
+-A INPUT -i BRIDGEIF -p udp -m udp --dport 68 -j ACCEPT
+-A INPUT -i BRIDGEIF -p udp -m udp --dport 67 -j ACCEPT
 -A INPUT -i BRIDGEIF -j DROP
 COMMIT
 # Completed on Tue Feb 28 15:37:55 2012

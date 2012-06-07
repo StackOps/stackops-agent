@@ -468,6 +468,7 @@ class ControllerConfig(Config):
         utils.execute("sed -i 's@daemon = False@daemon = True@g' /etc/glance/glance-scrubber.conf")
         utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-api.conf" % self.TOKEN)
         utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-registry.conf" % self.TOKEN)
+        utils.execute("sed -i 's/^[ \\t]*limit_param_default[ \\t]*=.*$/limit_param_default = 2000/g' /etc/glance/glance-registry.conf")
 
     def _configureKeystone(self):
         if self.use_keystone:

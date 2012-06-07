@@ -1052,6 +1052,7 @@ class NetworkConfig(Config):
                       'public_interface': self.public_interface,
                       'network_manager': self.network_manager,
                       'flat_network_dhcp_start': self.flat_network_dhcp_start,
+                      'fixed_range': self.fixed_range,
                       'ec2_host': self.ec2_hostname,
                       'ec2_dmz_host': self.ec2_dmz,
                       'override_bridge_interface': self.flat_interface}

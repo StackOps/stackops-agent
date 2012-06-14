@@ -1563,11 +1563,11 @@ class Configurator(object):
             raise Exception("Error writing file. " + path + '/' + filename)
 
 
-    def _configureXymonServer(self, domain_name):
+    def _configureXymonServer(self, xymon_ip):
         # Change default ntp server to client choice
         self._installDeb('xymon-client', interactive = False)
-        host = domain_name.split('.')[0]
-        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % host)
+        utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % xymon_ip)
+        utils.execute("sed -i 's/.stackops.org//g' /etc/default/hobbit-client")
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 
     def _blacklistFb(self):

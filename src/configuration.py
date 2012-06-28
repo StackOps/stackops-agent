@@ -154,8 +154,9 @@ class ControllerConfig(Config):
         self.nova_port = self._filler.getPropertyValue(xmldoc, 'database', 'port', '3306')
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
-        self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+        self.nova_charset = self._filler.getPropertyValue(xmldoc, 'database', 'charset', 'utf8')
+        self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s?charset=%s' % (
+        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema,self.nova_charset)
 
         # GLANCE database configuration
         self.glance_username = self._filler.getPropertyValue(xmldoc, 'glance_database', 'username', 'root')
@@ -1568,6 +1569,8 @@ class Configurator(object):
         self._installDeb('xymon-client', interactive = False)
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % xymon_ip)
         utils.execute("sed -i 's/.stackops.org//g' /etc/default/hobbit-client")
+        utils.execute("sed -i 's/grep -v tmpfs | awk/grep -v tmpfs | grep -v nfs | awk/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
+        utils.execute("sed -i 's/df -Pl -x iso9660/df -P -x iso9660/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 
     def _blacklistFb(self):

@@ -26,11 +26,11 @@ mkdir build
 cd build
 
 cp -fR ../scripts/* .
-cp -fR ../src/*.py var/lib/stackops/
-cp -fR ../src/*.conf var/lib/stackops/
-cp -fR ../src/*.iptables var/lib/stackops/
-cp -fR ../src/django.wsgi var/lib/stackops/
-cp -fR ../src/sslcert.* var/lib/stackops/
+cp -fR ../*.py var/lib/stackops/
+cp -fR ../*.conf var/lib/stackops/
+cp -fR ../*.iptables var/lib/stackops/
+cp -fR ../django.wsgi var/lib/stackops/
+cp -fR ../sslcert.* var/lib/stackops/
 chmod 700 var/lib/stackops/*.sh
 
 tar cvf ../dist/stackops-agent-$VERSION.tar *

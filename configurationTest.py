@@ -12,11 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
-Created on Feb 21, 2011
-
-@author: Diego Parrilla
-'''
 import unittest
 import sys
 import configuration
@@ -36,20 +31,21 @@ class MySQLConfigTest(unittest.TestCase):
     def testInstall(self):
         c =configuration.MySQLMasterConfig()
         c.mysql_root_password = 'stackops'
-        c.installPackages()
+        result = c.installPackages()
+	self.assertTrue(result==None)
 
-    def testConfigure(self):
-        url = 'http://127.0.0.1:8888'
-        user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
-        values = {'sysinfo' : 'Michael Foord' }
-        headers = { 'User-Agent' : user_agent }
-
-        data = urllib.urlencode(values)
-        req = urllib2.Request(url, data, headers)
-        response = urllib2.urlopen(req)
-        the_page = response.read()
-
-        self.assertTrue(the_page)
+#    def testConfigure(self):
+#        url = 'http://127.0.0.1:8888'
+#        user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
+#        values = {'sysinfo' : 'Michael Foord' }
+#        headers = { 'User-Agent' : user_agent }
+#
+#        data = urllib.urlencode(values)
+#        req = urllib2.Request(url, data, headers)
+#        response = urllib2.urlopen(req)
+#        the_page = response.read()
+#
+#        self.assertTrue(the_page)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

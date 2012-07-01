@@ -21,112 +21,35 @@ import unittest
 import sys
 import configuration
 import StackOps
+import urllib
+import urllib2
+
 
 from install import Filler
 
 
-class ConfiguratorTest(unittest.TestCase):
-
-
-    _filler = Filler()
-    
-    def setUp(self):
-        pass
-
-
-    def tearDown(self):
-        pass
-
-
-    def testDetectConfiguration(self):
-        c = configuration.Configurator()
-        c.detectConfiguration()
-        pass
-
-    def testImportConfiguration(self):
-        controller = self._filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true')
-        cloud = StackOps.cloud()
-        cloud.add_component(controller)
-        node = self._filler.createNode(cloud)
-        node.export(sys.stdout,0)
-        c = configuration.Configurator()
-        c.importConfiguration(node)
-        pass
-
-    def testCreateCollectdConfig(self):
-        c = configuration.Configurator()
-        c._createCollectdConfigFile(15, '192.168.10.30')
-        pass
-
-class ControllerConfigTest(unittest.TestCase):
+class MySQLConfigTest(unittest.TestCase):
     def setUp(self):
         pass
     def tearDown(self):
         pass
-    def testCheckInstallation(self):
-        c =configuration.ControllerConfig()
-        self.assertTrue(c.checkInstallation())
-    def testRead(self):
-        c = configuration.ControllerConfig()
-        self.assertTrue(c.read())
-    def testWrite(self):
-        c = configuration.ControllerConfig()
-        filler = Filler()        
-        controller = filler.populateController('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true')
-        self.assertFalse(c.write(controller))
+    def testInstall(self):
+        c =configuration.MySQLMasterConfig()
+        c.mysql_root_password = 'stackops'
+        c.installPackages()
 
-class ComputeConfigTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
-    def testCheckInstallation(self):
-        c =configuration.ComputeConfig()
-        self.assertTrue(c.checkInstallation())
-    def testRead(self):
-        c = configuration.ComputeConfig()
-        self.assertTrue(c.read())
-    def testWrite(self):
-        c = configuration.ComputeConfig()
-        filler = Filler()        
-        compute = filler.populateCompute('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','qemu','true','eth1','192.168.10.31','100')
-        self.assertFalse(c.write(compute))
+    def testConfigure(self):
+        url = 'http://127.0.0.1:8888'
+        user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
+        values = {'sysinfo' : 'Michael Foord' }
+        headers = { 'User-Agent' : user_agent }
 
-class NetworkConfigTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
-    def testCheckInstallation(self):
-        c =configuration.NetworkConfig()
-        self.assertTrue(c.checkInstallation())
-    def testRead(self):
-        c = configuration.NetworkConfig()
-        self.assertTrue(c.read())
-    def testWrite(self):
-        c = configuration.NetworkConfig()
-        filler = Filler()        
-#        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','192.168.10.31','true','ethFLAT','ethPUBLIC')
-        network = filler.populateNetworkNode('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','/etc/nova/nova-network.conf','/var/lib/nova/bin/nova-dhcpbridge','true','ethFLAT','ethPUBLIC')
-        self.assertFalse(c.write(network))
+        data = urllib.urlencode(values)
+        req = urllib2.Request(url, data, headers)
+        response = urllib2.urlopen(req)
+        the_page = response.read()
 
-class VolumeConfigTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
-    def testCheckInstallation(self):
-        c =configuration.VolumeConfig()
-        self.assertTrue(c.checkInstallation())
-    def testRead(self):
-        c = configuration.VolumeConfig()
-        self.assertTrue(c.read())
-    def testWrite(self):
-        c = configuration.VolumeConfig()
-        filler = Filler()        
-        volume = filler.populateVolume('true','true', 'root', 'nova', '192.168.10.31', '3306', 'nova', 'nova.auth.dbdriver.DbDriver', '/var/log/nova', '/var/lib/nova', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', '192.168.10.31', 'nova.network.manager.VlanManager','192.168.0.0/12','5000','true','true')
-        volume.export(sys.stdout, 0)
-        self.assertFalse(c.write(volume))
+        self.assertTrue(the_page)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

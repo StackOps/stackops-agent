@@ -81,40 +81,87 @@ class Config(VanillaConfig):
     '''
 
     def installPackagesCommon(self):
-        self._installDeb('python-software-properties')
-        self._installDeb('python-sqlalchemy')
-        self._installDeb('python-mox')
-        self._installDeb('python-greenlet')
-        self._installDeb('python-carrot')
-        self._installDeb('python-migrate')
-        self._installDeb('python-eventlet')
-        self._installDeb('python-gflags')
-        self._installDeb('python-ipy')
-        self._installDeb('python-tempita')
-        self._installDeb('python-libxml2')
-        self._installDeb('python-lxml')
-        self._installDeb('python-routes')
-        self._installDeb('python-cheetah')
-        self._installDeb('python-netaddr')
-        self._installDeb('python-paste')
-        self._installDeb('python-pastedeploy')
-        self._installDeb('python-mysqldb')
-        self._installDeb('python-kombu')
-        self._installDeb('python-novaclient')
-        self._installDeb('python-xattr')
-        self._installDeb('python-glance')
-        self._installDeb('python-lockfile')
-        self._installDeb('python-m2crypto')
-        self._installDeb('python-boto')
-        self._installDeb('gawk')
-        self._installDeb('curl')
-        self._installDeb('socat')
-        self._installDeb('unzip')
-        self._installDeb('vlan')
-        self._installDeb('open-iscsi')
-#        self._installDeb('collectd-core')
-#        self._installDeb('snmp')
-#        self._installDeb('snmpd')
+        #        self._installDeb('collectd-core')
+        #        self._installDeb('snmp')
+        #        self._installDeb('snmpd')
+        print
+
+class MySQLMasterConfig(Config):
+
+    def __init__(self):
+        """
+        Constructor
+        """
+
+    # Write the parameters (if possible) from the xml file
+    def write(self, xmldoc):
+        # Basic Infrastructure Services
+        self.install_mysql = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_mysql', 'true') == 'true'
+        self.mysql_root_password = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'mysql_password', 'stackops')
+
+        # NOVA database configuration
+        self.nova_username = self._filler.getPropertyValue(xmldoc, 'database', 'username', 'nova')
+        self.nova_password = self._filler.getPropertyValue(xmldoc, 'database', 'password', 'nova')
+        self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
+        self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
+
+        # GLANCE database configuration
+        self.glance_username = self._filler.getPropertyValue(xmldoc, 'glance_database', 'username', 'glance')
+        self.glance_password = self._filler.getPropertyValue(xmldoc, 'glance_database', 'password', 'nova')
+        self.glance_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'schema', 'glance')
+        self.glance_drop_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'dropschema',
+            'true') == 'true'
+
+        # KEYSTONE database configuration
+        self.keystone_username = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'username', 'keystone')
+        self.keystone_password = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'password', 'nova')
+        self.keystone_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'schema', 'keystone')
+        self.keystone_drop_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'dropschema',
+            'true') == 'true'
+
+        return
+
+    def _configureMySQL(self):
+        utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
+        utils.execute('service mysql restart')
+        if self.nova_drop_schema:
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS nova;"' % self.mysql_root_password,check_exit_code=False)
+        if self.glance_drop_schema:
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS glance;"' % self.mysql_root_password, check_exit_code=False)
+        if self.keystone_drop_schema:
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password, check_exit_code=False)
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.nova_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.glance_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.keystone_schema))
+
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
+
+
+    def install(self, xmldoc, hostname):
+        """
+        Install all stuff needed to run a mysql database for Nova
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configureMySQL()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        utils.execute('echo mysql-server-5.5 mysql-server/root_password password ' + self.mysql_root_password + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.5 mysql-server/root_password_again password ' + self.mysql_root_password + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.5 mysql-server/start_on_boot boolean true')
+        self._installDeb('mysql-server python-mysqldb')
 
 class ControllerConfig(Config):
     '''
@@ -1473,8 +1520,8 @@ class Configurator(object):
         '''
 
     def _removeRepos(self):
-        utils.execute('sed -i /lucid-updates/d /etc/apt/sources.list')
-        utils.execute('sed -i /lucid-security/d /etc/apt/sources.list')
+        utils.execute('sed -i /precise-updates/d /etc/apt/sources.list')
+        utils.execute('sed -i /precise-security/d /etc/apt/sources.list')
         utils.execute('sed -i /archive.ubuntu.com/d /etc/apt/sources.list')
         utils.execute('rm /etc/apt/sources.list.d/stackops.list || true')
         utils.execute('apt-get -y update')

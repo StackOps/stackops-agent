@@ -208,13 +208,13 @@ class RabbitMQMasterConfig(Config):
         """
         RabbitMQ uninstall process
         """
-        utils.execute("apt-get -y remove rabbitmq-server memcached python-memcached", check_exit_code=False)
+        utils.execute("apt-get -y remove rabbitmq-server memcached python-memcache", check_exit_code=False)
         utils.execute("apt-get -y autoremove", check_exit_code=False)
         return
 
     def installPackages(self):
         self.installPackagesCommon()
-        self._installDeb('rabbitmq-server memcached python-memcached', interactive=False)
+        self._installDeb('rabbitmq-server memcached python-memcache', interactive=False)
         return
 
 class ControllerConfig(Config):

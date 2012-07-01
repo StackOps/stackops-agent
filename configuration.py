@@ -62,6 +62,9 @@ class VanillaConfig(object):
     def install(self, hostname):
         raise NotImplementedError("Should have implemented this")
 
+    def uninstall(self, hostname):
+        raise NotImplementedError("Should have implemented this")
+
     def write(self, xmldoc):
         raise NotImplementedError("Should have implemented this")
 
@@ -142,7 +145,7 @@ class MySQLMasterConfig(Config):
         utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
 
 
-    def install(self, xmldoc, hostname):
+    def install(self, hostname):
         """
         Install all stuff needed to run a mysql database for Nova
         """
@@ -156,12 +159,63 @@ class MySQLMasterConfig(Config):
             result = 'ERROR: %s' % str(inst)
         return result
 
+    def uninstall(self, hostname):
+        """
+        MySQL database cannot be uninstalled.
+        """
+        raise NotImplementedError("MySQL Database cannot be uninstalled.")
+
+    def installPackages(self):
+            self.installPackagesCommon()
+            utils.execute('echo mysql-server-5.5 mysql-server/root_password password ' + self.mysql_root_password + ' | debconf-set-selections')
+            utils.execute('echo mysql-server-5.5 mysql-server/root_password_again password ' + self.mysql_root_password + ' | debconf-set-selections')
+            utils.execute('echo mysql-server-5.5 mysql-server/start_on_boot boolean true')
+            self._installDeb('mysql-server python-mysqldb')
+
+class RabbitMQMasterConfig(Config):
+
+    def __init__(self):
+        """
+        Constructor
+        """
+
+    # Write the parameters (if possible) from the xml file
+    def write(self, xmldoc):
+        # Basic Infrastructure Services
+        self.install_rabbitmq = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_rabbitmq','true') == 'true'
+        return
+
+    def _configureRabbitMQ(self):
+        # Do nothing (security here????)
+        return
+
+
+    def install(self, hostname):
+        """
+        Install all stuff needed to run RabbitMQ for Nova
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configureRabbitMQ()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def uninstall(self, hostname):
+        """
+        RabbitMQ uninstall process
+        """
+        utils.execute("apt-get -y remove rabbitmq-server memcached python-memcached", check_exit_code=False)
+        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        return
+
     def installPackages(self):
         self.installPackagesCommon()
-        utils.execute('echo mysql-server-5.5 mysql-server/root_password password ' + self.mysql_root_password + ' | debconf-set-selections')
-        utils.execute('echo mysql-server-5.5 mysql-server/root_password_again password ' + self.mysql_root_password + ' | debconf-set-selections')
-        utils.execute('echo mysql-server-5.5 mysql-server/start_on_boot boolean true')
-        self._installDeb('mysql-server python-mysqldb')
+        self._installDeb('rabbitmq-server memcached python-memcached', interactive=False)
+        return
 
 class ControllerConfig(Config):
     '''

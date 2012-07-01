@@ -83,6 +83,28 @@ class MySQLConfigTest(unittest.TestCase):
         (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.keystone_schema))
         self.assertTrue(c.keystone_schema in stdout)
 
+class RabbitMQConfigTest(unittest.TestCase):
+
+    def setUp(self):
+        log.startLogging(sys.stdout)
+        c =configuration.RabbitMQMasterConfig()
+        c.uninstall(hostname='stackops-node')
+        pass
+    def tearDown(self):
+        c =configuration.RabbitMQMasterConfig()
+        c.uninstall(hostname='stackops-node')
+        pass
+    def testInstall(self):
+        c =configuration.RabbitMQMasterConfig()
+        result = c.installPackages()
+        self.assertTrue(result is None)
+    def testConfigure(self):
+        c =configuration.RabbitMQMasterConfig()
+        c.installPackages()
+        c._configureRabbitMQ()
+        (stdout, stderr) = utils.execute("service rabbitmq-server status")
+        self.assertTrue('running' in stdout)
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

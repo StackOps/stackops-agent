@@ -217,6 +217,64 @@ class RabbitMQMasterConfig(Config):
         self._installDeb('rabbitmq-server memcached python-memcache', interactive=False)
         return
 
+class KeystoneConfig(Config):
+
+    def __init__(self):
+        """
+        Constructor
+        """
+
+    # Write the parameters (if possible) from the xml file
+    def write(self, xmldoc):
+        # keystone is always used. Flag kept for backwards compatibility
+        self.use_keystone = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_enabled', 'true') == 'true'
+        self.keystone_username = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'username', 'keystone')
+        self.keystone_password = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'password', 'nova')
+        self.keystone_host = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'host', '127.0.0.1')
+        self.keystone_port = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'port', '3306')
+        self.keystone_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'schema', 'keystone')
+        self.keystone_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
+            self.keystone_username, self.keystone_password, self.keystone_host, self.keystone_port,
+            self.keystone_schema)
+        self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+        self.default_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_password',
+            'password')
+        self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
+        self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
+        return
+
+    def _configureKeystone(self):
+        utils.execute("sed -i 's@default_store = sqlite@default_store = mysql@g' /etc/keystone/keystone.conf")
+        return
+
+
+    def install(self, hostname):
+        """
+        Install all stuff needed to run Keystone
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configureKeystone()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def uninstall(self, hostname):
+        """
+        Keystone uninstall process
+        """
+        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient", check_exit_code=False)
+        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        return
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('keystone python-keystone python-keystoneclient')
+        return
+
 class ControllerConfig(Config):
     '''
     classdocs

@@ -20,14 +20,22 @@ import urllib
 import urllib2
 import utils
 
+from twisted.python import log
 
 from install import Filler
 
 
 class MySQLConfigTest(unittest.TestCase):
+    def _uninstallMySQLServer(self):
+	utils.execute("apt-get -y remove mysql-server python-mysqldb", check_exit_code=False)
+	utils.execute("apt-get -y autoremove", check_exit_code=False)
+
     def setUp(self):
+	log.startLogging(sys.stdout)
+	self._uninstallMySQLServer()
         pass
     def tearDown(self):
+	self._uninstallMySQLServer()
         pass
     def testInstall(self):
         c =configuration.MySQLMasterConfig()
@@ -44,7 +52,7 @@ class MySQLConfigTest(unittest.TestCase):
 #        req = urllib2.Request(url, data, headers)
 #        response = urllib2.urlopen(req)
 #        the_page = response.read()
-        c =configuration.MySQLMasterConfig()
+        c = configuration.MySQLMasterConfig()
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -68,8 +76,12 @@ class MySQLConfigTest(unittest.TestCase):
 
         c._configureMySQL()
 
-        (stdout, stderr) = utils.execute('mysql -uroot -p%s -e "SHOW DATABASES LIKE %s;"' % (self.mysql_root_password, self.nova_schema))
-        self.assertEqual(stdout,"nova")
+        (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.nova_schema))
+        self.assertTrue(c.nova_schema in stdout)
+        (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.glance_schema))
+        self.assertTrue(c.glance_schema in stdout)
+        (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.keystone_schema))
+        self.assertTrue(c.keystone_schema in stdout)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

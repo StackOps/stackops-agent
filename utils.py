@@ -47,8 +47,10 @@ def execute(cmd, process_input=None, addl_env=None, check_exit_code=True):
         result = obj.communicate()
     obj.stdin.close()
     (stdout,stderr) = result
-    log.msg('stdout=%s' % stdout)
-    log.msg('stderr=%s' % stderr)
+    if len(stdout)>0:
+        log.msg('stdout=%s' % stdout)
+    if len(stderr)>0:
+        log.msg('stderr=%s' % stderr)
     if obj.returncode:
         log.msg("Result was %s" % (obj.returncode))
         if check_exit_code and obj.returncode != 0:

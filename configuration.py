@@ -135,11 +135,11 @@ class MySQLMasterConfig(Config):
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.keystone_schema))
 
         utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
         utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
         utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
 
 
     def install(self, xmldoc, hostname):

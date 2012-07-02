@@ -166,6 +166,66 @@ class KeystoneConfigTest(unittest.TestCase):
 #        self.assertTrue('running' in stdout)
         pass
 
+class GlanceConfigTest(unittest.TestCase):
+
+    def _uninstallMySQLServer(self):
+        utils.execute("apt-get -y remove mysql-server python-mysqldb", check_exit_code=False)
+        utils.execute("apt-get -y autoremove", check_exit_code=False)
+
+    def setUp(self):
+        log.startLogging(sys.stdout)
+        c = configuration.MySQLMasterConfig()
+        c.mysql_root_password = 'stackops'
+        result = c.installPackages()
+
+        # NOVA database configuration
+        c.nova_username = "nova"
+        c.nova_password = "stackops"
+        c.nova_schema = "nova"
+        c.nova_drop_schema = True
+
+        # GLANCE database configuration
+        c.glance_username = "glance"
+        c.glance_password = "stackops"
+        c.glance_schema = "glance"
+        c.glance_drop_schema = True
+
+        # KEYSTONE database configuration
+        c.keystone_username = "keystone"
+        c.keystone_password = "stackops"
+        c.keystone_schema = "keystone"
+        c.keystone_drop_schema = True
+
+        c._configureMySQL()
+        c = configuration.KeystoneConfig()
+        result = c.installPackages()
+        c = configuration.GlanceConfig()
+        result = c.installPackages()
+        pass
+
+    def tearDown(self):
+        c =configuration.GlanceConfig()
+        c.uninstall(hostname='stackops-node')
+        c =configuration.KeystoneConfig()
+        c.uninstall(hostname='stackops-node')
+        c =configuration.RabbitMQMasterConfig()
+        c.uninstall(hostname='stackops-node')
+        self._uninstallMySQLServer()
+        pass
+
+    def testConfigure(self):
+        c =configuration.GlanceConfig()
+        c.glance_username = 'glance'
+        c.glance_password = 'stackops'
+        c.glance_host = '127.0.0.1'
+        c.glance_port = '3306'
+        c.glance_schema = 'glance'
+        c.glance_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (c.glance_username, c.glance_password, c.glance_host, c.glance_port, c.glance_schema)
+        c.admin_password = 'password'
+        c._configureGlance()
+        #        (stdout, stderr) = utils.execute("service rabbitmq-server status")
+        #        self.assertTrue('running' in stdout)
+        pass
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

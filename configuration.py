@@ -89,8 +89,8 @@ class Config(VanillaConfig):
         #        self._installDeb('snmpd')
         print
 
-class MySQLMasterConfig(Config):
 
+class MySQLMasterConfig(Config):
     def __init__(self):
         """
         Constructor
@@ -128,21 +128,33 @@ class MySQLMasterConfig(Config):
         utils.execute("sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf")
         utils.execute('service mysql restart')
         if self.nova_drop_schema:
-            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS nova;"' % self.mysql_root_password,check_exit_code=False)
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS nova;"' % self.mysql_root_password,
+                check_exit_code=False)
         if self.glance_drop_schema:
-            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS glance;"' % self.mysql_root_password, check_exit_code=False)
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS glance;"' % self.mysql_root_password,
+                check_exit_code=False)
         if self.keystone_drop_schema:
-            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password, check_exit_code=False)
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password,
+                check_exit_code=False)
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.nova_schema))
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.glance_schema))
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.keystone_schema))
 
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
-        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
+        utils.execute(
+            '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
+            self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
+        utils.execute(
+            '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
+            self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
+        utils.execute(
+            '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
+            self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
+        self.mysql_root_password, self.nova_schema, self.nova_username, self.nova_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
+        self.mysql_root_password, self.glance_schema, self.glance_username, self.glance_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
+        self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
 
 
     def install(self, hostname):
@@ -166,23 +178,26 @@ class MySQLMasterConfig(Config):
         raise NotImplementedError("MySQL Database cannot be uninstalled.")
 
     def installPackages(self):
-            self.installPackagesCommon()
-            utils.execute('echo mysql-server-5.5 mysql-server/root_password password ' + self.mysql_root_password + ' | debconf-set-selections')
-            utils.execute('echo mysql-server-5.5 mysql-server/root_password_again password ' + self.mysql_root_password + ' | debconf-set-selections')
-            utils.execute('echo mysql-server-5.5 mysql-server/start_on_boot boolean true')
-            self._installDeb('mysql-server python-mysqldb')
+        self.installPackagesCommon()
+        utils.execute(
+            'echo mysql-server-5.5 mysql-server/root_password password ' + self.mysql_root_password + ' | debconf-set-selections')
+        utils.execute(
+            'echo mysql-server-5.5 mysql-server/root_password_again password ' + self.mysql_root_password + ' | debconf-set-selections')
+        utils.execute('echo mysql-server-5.5 mysql-server/start_on_boot boolean true')
+        self._installDeb('mysql-server python-mysqldb')
+
 
 class RabbitMQMasterConfig(Config):
-
     def __init__(self):
         """
         Constructor
         """
 
-    # Write the parameters (if possible) from the xml file
+        # Write the parameters (if possible) from the xml file
     def write(self, xmldoc):
         # Basic Infrastructure Services
-        self.install_rabbitmq = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_rabbitmq','true') == 'true'
+        self.install_rabbitmq = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_rabbitmq',
+            'true') == 'true'
         return
 
     def _configureRabbitMQ(self):
@@ -217,8 +232,8 @@ class RabbitMQMasterConfig(Config):
         self._installDeb('rabbitmq-server memcached python-memcache', interactive=False)
         return
 
-class KeystoneConfig(Config):
 
+class KeystoneConfig(Config):
     def __init__(self):
         """
         Constructor
@@ -241,46 +256,70 @@ class KeystoneConfig(Config):
             'password')
         self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
         self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
-	self.endpoint = 'http://localhost:35357/v2.0'
+        self.endpoint = 'http://localhost:35357/v2.0'
         return
 
-    def get_id (self, str):
+    def get_id(self, str):
         (stdout, stderr) = utils.execute("echo '%s' | awk '/ id / { print $4 }'" % str)
-	return stdout.replace('\n', '')
+        return stdout.replace('\n', '')
 
     def _configureKeystone(self):
-        utils.execute("sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/keystone/keystone.conf" % self.admin_password)
-        utils.execute("sed -i 's#connection = sqlite:////var/lib/keystone/keystone.db#connection = %s#g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
-	utils.execute("sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
-	utils.execute("service keystone restart")
-	utils.execute("keystone-manage db_sync")
-	# Configure service users/roles
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s tenant-create --name=admin' % (self.endpoint, self.admin_password))
-	admin_tenant = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s tenant-create --name=service' % (self.endpoint, self.admin_password))
-	service_tenant = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=admin --pass=%s --email=admin@domain.com' % (self.endpoint, self.admin_password, self.admin_password))
+        utils.execute(
+            "sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/keystone/keystone.conf" % self.admin_password)
+        utils.execute(
+            "sed -i 's#connection = sqlite:////var/lib/keystone/keystone.db#connection = %s#g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
+        utils.execute(
+            "sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+        utils.execute("service keystone restart")
+        utils.execute("keystone-manage db_sync")
+        # Configure service users/roles
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s tenant-create --name=admin' % (self.endpoint, self.admin_password))
+        admin_tenant = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s tenant-create --name=service' % (self.endpoint, self.admin_password))
+        service_tenant = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-create --name=admin --pass=%s --email=admin@domain.com' % (
+            self.endpoint, self.admin_password, self.admin_password))
         admin_user = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=nova --pass=%s --tenant_id %s --email=nova@domain.com' % (self.endpoint, self.admin_password, self.admin_password, service_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-create --name=nova --pass=%s --tenant_id %s --email=nova@domain.com' % (
+            self.endpoint, self.admin_password, self.admin_password, service_tenant))
         nova_user = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=glance --pass=%s --tenant_id %s --email=glance@domain.com' % (self.endpoint, self.admin_password, self.admin_password, service_tenant))
+
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-create --name=glance --pass=%s --tenant_id %s --email=glance@domain.com' % (
+            self.endpoint, self.admin_password, self.admin_password, service_tenant))
         glance_user = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=admin' % (self.endpoint, self.admin_password))
-	admin_role = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=KeystoneAdmin' % (self.endpoint, self.admin_password))
-	keystone_admin_role = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=KeystoneServiceAdmin' % (self.endpoint, self.admin_password))
-	keystone_service_admin_role = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=Member' % (self.endpoint, self.admin_password))
-	member_role = self.get_id(stdout)
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, admin_role, admin_tenant))
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, keystone_admin_role, admin_tenant))
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, keystone_service_admin_role, admin_tenant))
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, nova_user, admin_role, service_tenant))
-	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, glance_user, admin_role, service_tenant))
-
-
-	return
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=admin' % (self.endpoint, self.admin_password))
+        admin_role = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=KeystoneAdmin' % (self.endpoint, self.admin_password))
+        keystone_admin_role = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=KeystoneServiceAdmin' % (self.endpoint, self.admin_password))
+        keystone_service_admin_role = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=Member' % (self.endpoint, self.admin_password))
+        member_role = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+            self.endpoint, self.admin_password, admin_user, admin_role, admin_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+            self.endpoint, self.admin_password, admin_user, keystone_admin_role, admin_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+            self.endpoint, self.admin_password, admin_user, keystone_service_admin_role, admin_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+            self.endpoint, self.admin_password, nova_user, admin_role, service_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+            self.endpoint, self.admin_password, glance_user, admin_role, service_tenant))
+        return
 
 
     def install(self, hostname):
@@ -297,18 +336,88 @@ class KeystoneConfig(Config):
             result = 'ERROR: %s' % str(inst)
         return result
 
+
     def uninstall(self, hostname):
         """
         Keystone uninstall process
         """
-        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient python-mysqldb", check_exit_code=False)
+        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient python-mysqldb",
+            check_exit_code=False)
         utils.execute("apt-get -y autoremove", check_exit_code=False)
         return
+
 
     def installPackages(self):
         self.installPackagesCommon()
         self._installDeb('keystone python-keystone python-keystoneclient python-mysqldb')
         return
+
+
+class GlanceConfig(Config):
+    def __init__(self):
+        """
+        Constructor
+        """
+
+    # Write the parameters (if possible) from the xml file
+    def write(self, xmldoc):
+        # Keystone admin password
+        self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+        # GLANCE database configuration
+        self.glance_username = self._filler.getPropertyValue(xmldoc, 'glance_database', 'username', 'glance')
+        self.glance_password = self._filler.getPropertyValue(xmldoc, 'glance_database', 'password', 'nova')
+        self.glance_host = self._filler.getPropertyValue(xmldoc, 'glance_database', 'host', '127.0.0.1')
+        self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance_database', 'port', '3306')
+        self.glance_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'schema', 'glance')
+        self.glance_drop_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'dropschema',
+            'true') == 'true'
+        self.glance_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
+            self.glance_username, self.glance_password, self.glance_host, self.glance_port, self.glance_schema)
+        return
+
+    def _configureGlance(self):
+        utils.execute(
+            "sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/glance/glance-api-paste.ini" % self.admin_password)
+        utils.execute(
+            "sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
+        utils.execute(
+            "sed -i 's#connection = sqlite:////var/lib/glance/glance.db#connection = %s#g' /etc/glance/glance-registry.conf" % self.glance_sql_connection)
+#        utils.execute(
+#            "sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+        utils.execute("glance-manage version_control 0")
+        utils.execute("glance-manage db_sync")
+        utils.execute("service glance-api restart && service glance-registry restart")
+        return
+
+
+    def install(self, hostname):
+        """
+        Install all stuff needed to run Keystone
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configureGlance()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def uninstall(self, hostname):
+        """
+        Keystone uninstall process
+        """
+        utils.execute("apt-get -y remove glance glance-api glance-client glance-common glance-registry python-mysqldb",
+            check_exit_code=False)
+        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        return
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('glance glance-api glance-client glance-common glance-registry python-mysqldb')
+        return
+
 
 class ControllerConfig(Config):
     '''
@@ -338,7 +447,7 @@ class ControllerConfig(Config):
         # Basic Infrastructure Services
         self.install_mysql = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_mysql', 'true') == 'true'
         self.install_rabbitmq = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'install_rabbitmq',
-                                                              'true') == 'true'
+            'true') == 'true'
         self.mysql_root_password = self._filler.getPropertyValue(xmldoc, 'infrastructure', 'mysql_password', 'nova')
 
         # NOVA database configuration
@@ -350,7 +459,7 @@ class ControllerConfig(Config):
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
         self.nova_charset = self._filler.getPropertyValue(xmldoc, 'database', 'charset', 'utf8')
         self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s?charset=%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema,self.nova_charset)
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema, self.nova_charset)
 
         # GLANCE database configuration
         self.glance_username = self._filler.getPropertyValue(xmldoc, 'glance_database', 'username', 'root')
@@ -359,9 +468,9 @@ class ControllerConfig(Config):
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance_database', 'port', '3306')
         self.glance_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'schema', 'nova')
         self.glance_drop_schema = self._filler.getPropertyValue(xmldoc, 'glance_database', 'dropschema',
-                                                                'true') == 'true'
+            'true') == 'true'
         self.glance_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.glance_username, self.glance_password, self.glance_host, self.glance_port, self.glance_schema)
+            self.glance_username, self.glance_password, self.glance_host, self.glance_port, self.glance_schema)
 
         # EC2 API Configuration
         self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
@@ -385,16 +494,16 @@ class ControllerConfig(Config):
         self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', self.ec2_hostname)
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
         self.image_service = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service',
-                                                           'nova.image.glance.GlanceImageService')
+            'nova.image.glance.GlanceImageService')
         self.glance_mount_type = self._filler.getPropertyValue(xmldoc, 'glance', 'mount_type', 'local')
         if self.glance_mount_type == 'local':
             self.glance_mount_point = self._filler.getPropertyValue(xmldoc, 'glance', 'mount_point', None)
             self.glance_mount_parameters = self._filler.getPropertyValue(xmldoc, 'glance', 'mount_parameters', None)
         else:
             self.glance_mount_point = self._filler.getPropertyValue(xmldoc, 'glance', 'mount_point',
-                                                                    '192.168.10.198:/volumes/vol1/openstack-nfs-images')
+                '192.168.10.198:/volumes/vol1/openstack-nfs-images')
             self.glance_mount_parameters = self._filler.getPropertyValue(xmldoc, 'glance', 'mount_parameters',
-                                                                         'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
+                'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
 
         # RabbitMQ configuration
         self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname', '127.0.0.1')
@@ -404,7 +513,7 @@ class ControllerConfig(Config):
         self.scheduler_max_gigabytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_gigabytes', '2048') # 2TB
         self.scheduler_max_networks = self._filler.getPropertyValue(xmldoc, 'scheduler', 'max_networks', '1000')
         self.scheduler_driver = self._filler.getPropertyValue(xmldoc, 'scheduler', 'driver',
-                                                              'nova.scheduler.simple.SimpleScheduler')
+            'nova.scheduler.simple.SimpleScheduler')
 
         # Keystone configuration
         self.use_keystone = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_enabled', 'true') == 'true'
@@ -418,13 +527,13 @@ class ControllerConfig(Config):
             self.keystone_port = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'port', '3306')
             self.keystone_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'schema', 'nova')
             self.keystone_drop_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'dropschema',
-                                                                      'true') == 'true'
+                'true') == 'true'
             self.keystone_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-            self.keystone_username, self.keystone_password, self.keystone_host, self.keystone_port,
-            self.keystone_schema)
+                self.keystone_username, self.keystone_password, self.keystone_host, self.keystone_port,
+                self.keystone_schema)
             self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
             self.default_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_password',
-                                                                  'password')
+                'password')
             self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
             self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
 
@@ -458,9 +567,12 @@ class ControllerConfig(Config):
         self.quota_gigabytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_gigabytes', str(1024 * 20))
         self.quota_floating_ips = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_floating_ips', '254')
         self.quota_metadata_items = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_metadata_items', '128')
-        self.quota_max_injected_files = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_files', '5')
-        self.quota_max_injected_file_content_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_content_bytes', str(10*1024))
-        self.quota_max_injected_file_path_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_file_path_bytes', '255')
+        self.quota_max_injected_files = self._filler.getPropertyValue(xmldoc, 'scheduler', 'quota_max_injected_files',
+            '5')
+        self.quota_max_injected_file_content_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler',
+            'quota_max_injected_file_content_bytes', str(10 * 1024))
+        self.quota_max_injected_file_path_bytes = self._filler.getPropertyValue(xmldoc, 'scheduler',
+            'quota_max_injected_file_path_bytes', '255')
 
         # Install Open VM Tools
         self.open_vm_tools = self._filler.getPropertyValue(xmldoc, 'hardening', 'open-vm-tools', 'true') == 'true'
@@ -494,17 +606,16 @@ class ControllerConfig(Config):
                       'allow_admin_api': 'true',
                       'osapi_extensions_path': '/var/lib/openstackx/extensions',
                       'vncproxy_url': '%s://%s:%s' % (self.vncproxy_type, self.vncproxy_host, self.vncproxy_port),
-                      'quota_instances' : self.quota_instances,
-                      'quota_cores' : self.quota_cores,
-                      'quota_ram' : self.quota_ram,
-                      'quota_volumes' : self.quota_volumes,
-                      'quota_gigabytes' : self.quota_gigabytes,
-                      'quota_floating_ips' : self.quota_floating_ips,
-                      'quota_metadata_items' : self.quota_metadata_items,
-                      'quota_max_injected_files' : self.quota_max_injected_files,
-                      'quota_max_injected_file_content_bytes' : self.quota_max_injected_file_content_bytes,
-                      'quota_max_injected_file_path_bytes' : self.quota_max_injected_file_path_bytes}
-
+                      'quota_instances': self.quota_instances,
+                      'quota_cores': self.quota_cores,
+                      'quota_ram': self.quota_ram,
+                      'quota_volumes': self.quota_volumes,
+                      'quota_gigabytes': self.quota_gigabytes,
+                      'quota_floating_ips': self.quota_floating_ips,
+                      'quota_metadata_items': self.quota_metadata_items,
+                      'quota_max_injected_files': self.quota_max_injected_files,
+                      'quota_max_injected_file_content_bytes': self.quota_max_injected_file_content_bytes,
+                      'quota_max_injected_file_path_bytes': self.quota_max_injected_file_path_bytes}
 
         self._writeFile(self._filename, parameters)
         return
@@ -514,22 +625,22 @@ class ControllerConfig(Config):
         utils.execute('service mysql restart')
         if self.nova_drop_schema:
             utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS nova;"' % self.mysql_root_password,
-                          check_exit_code=False)
+                check_exit_code=False)
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE nova;"' % self.mysql_root_password)
         if self.glance_drop_schema:
             utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS glance;"' % self.mysql_root_password,
-                          check_exit_code=False)
+                check_exit_code=False)
         utils.execute('mysql -uroot -p%s -e "CREATE DATABASE glance;"' % self.mysql_root_password)
         if self.use_keystone:
             if self.keystone_drop_schema:
                 utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password,
-                              check_exit_code=False)
+                    check_exit_code=False)
             utils.execute('mysql -uroot -p%s -e "CREATE DATABASE keystone;"' % self.mysql_root_password)
         utils.execute(
             '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION;"''' % self.mysql_root_password)
         utils.execute(
             '''mysql -uroot -p%s -e "SET PASSWORD FOR 'root'@'%%' = PASSWORD('%s');"''' % (
-            self.mysql_root_password, self.mysql_root_password))
+                self.mysql_root_password, self.mysql_root_password))
 
     def _configCerts(self):
         utils.execute('killall dnsmasq', None, None, False)
@@ -558,12 +669,12 @@ class ControllerConfig(Config):
 
     def _deleteFlavors(self):
         # Get flavors
-        (out,err) = utils.execute('/var/lib/nova/bin/nova-manage flavor list')
+        (out, err) = utils.execute('/var/lib/nova/bin/nova-manage flavor list')
         old_flavors = out.split('\n')
         flavorids = []
         for str in old_flavors:
-            if len(str)>0:
-                (flavorid,err) = utils.execute("echo '%s' | sed 's/: Memory:\(.*\)//g'" % str)
+            if len(str) > 0:
+                (flavorid, err) = utils.execute("echo '%s' | sed 's/: Memory:\(.*\)//g'" % str)
                 flavorids.append(flavorid)
         for flavor in flavorids:
             utils.execute('/var/lib/nova/bin/nova-manage flavor delete --purge %s' % flavor)
@@ -578,7 +689,9 @@ class ControllerConfig(Config):
             cpu = flavor[2]
             storage = flavor[3]
             flavorid = flavor[4]
-            utils.execute('/var/lib/nova/bin/nova-manage flavor create --name=%s --memory=%s --cpu=%s --local_gb=%s --flavor=%s' % (name,memory,cpu,storage,flavorid))
+            utils.execute(
+                '/var/lib/nova/bin/nova-manage flavor create --name=%s --memory=%s --cpu=%s --local_gb=%s --flavor=%s' % (
+                name, memory, cpu, storage, flavorid))
 
     def _createDefaultProjects(self):
         # create a project called 'admin' with project manager of 'admin'
@@ -596,17 +709,17 @@ class ControllerConfig(Config):
     def _enableInitFiles(self):
         # enable controller components
         utils.execute('mv /etc/init/nova-ajax-console-proxy.conf.disabled /etc/init/nova-ajax-console-proxy.conf',
-                      check_exit_code=False)
+            check_exit_code=False)
         utils.execute('mv /etc/init/nova-api.conf.disabled /etc/init/nova-api.conf', check_exit_code=False)
         utils.execute('mv /etc/init/nova-scheduler.conf.disabled /etc/init/nova-scheduler.conf', check_exit_code=False)
         utils.execute('mv /etc/init/nova-objectstore.conf.disabled /etc/init/nova-objectstore.conf',
-                      check_exit_code=False)
+            check_exit_code=False)
         utils.execute('mv /etc/init/nova-vncproxy.conf.disabled /etc/init/nova-vncproxy.conf', check_exit_code=False)
         utils.execute('mv /etc/init/glance-api.conf.disabled /etc/init/glance-api.conf', check_exit_code=False)
         utils.execute('mv /etc/init/glance-registry.conf.disabled /etc/init/glance-registry.conf',
-                      check_exit_code=False)
+            check_exit_code=False)
         utils.execute('mv /etc/init/glance-scrubber.conf.disabled /etc/init/glance-scrubber.conf',
-                      check_exit_code=False)
+            check_exit_code=False)
         utils.execute('mv /etc/init/keystone.conf.disabled /etc/init/keystone.conf', check_exit_code=False)
 
 
@@ -651,7 +764,8 @@ class ControllerConfig(Config):
         utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
         if self.glance_mount_type == 'nfs':
             # configure NFS mount
-            mpoint = '%s %s nfs %s 0 0'  % (self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
+            mpoint = '%s %s nfs %s 0 0' % (
+            self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
             utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
@@ -663,7 +777,8 @@ class ControllerConfig(Config):
         utils.execute("sed -i 's@daemon = False@daemon = True@g' /etc/glance/glance-scrubber.conf")
         utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-api.conf" % self.TOKEN)
         utils.execute("sed -i 's/999888777666/%s/g' /etc/glance/glance-registry.conf" % self.TOKEN)
-        utils.execute("sed -i 's/^[ \\t]*limit_param_default[ \\t]*=.*$/limit_param_default = 2000/g' /etc/glance/glance-registry.conf")
+        utils.execute(
+            "sed -i 's/^[ \\t]*limit_param_default[ \\t]*=.*$/limit_param_default = 2000/g' /etc/glance/glance-registry.conf")
 
     def _configureKeystone(self):
         if self.use_keystone:
@@ -672,14 +787,14 @@ class ControllerConfig(Config):
             # Configure keystone
             utils.execute('ln -s /var/lib/keystone/keystone /var/lib/nova/keystone', check_exit_code=False)
             utils.execute('ln -s /var/lib/keystone/etc/keystone.conf /etc/keystone/keystone.conf',
-                          check_exit_code=False)
+                check_exit_code=False)
             utils.execute("sed -i 's@default_store = sqlite@default_store = mysql@g' /etc/keystone/keystone.conf")
             utils.execute(
                 "sed -i 's@log_file = keystone.log@log_file = /var/log/keystone/keystone.log@g' /etc/keystone/keystone.conf")
             utils.execute(
                 "sed -i 's,sqlite:///keystone.db,%s,g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
             utils.execute(
-                "sed -i 's/admin_token = .*/admin_token = %s/g' %s" % (self.TOKEN,self.api_paste_config))
+                "sed -i 's/admin_token = .*/admin_token = %s/g' %s" % (self.TOKEN, self.api_paste_config))
             utils.execute('cd /var/lib/keystone; python setup.py build')
             utils.execute('cd /var/lib/keystone; python setup.py install')
 
@@ -687,13 +802,13 @@ class ControllerConfig(Config):
 
             # Tenants
             utils.execute('%s tenant add admin' % cmd)
-            if (len(self.default_username)>0):
+            if (len(self.default_username) > 0):
                 self.default_tenant = ''
                 utils.execute('%s tenant add %s' % (cmd, self.default_tenant))
 
             # Users
             utils.execute('%s user add admin %s' % (cmd, self.admin_password))
-            if (len(self.default_username)>0):
+            if (len(self.default_username) > 0):
                 utils.execute('%s user add %s %s' % (cmd, self.default_username, self.default_password))
 
             # Roles
@@ -704,7 +819,7 @@ class ControllerConfig(Config):
             utils.execute('%s role add sysadmin' % cmd)
             utils.execute('%s role add netadmin' % cmd)
             utils.execute('%s role grant Admin admin admin' % cmd)
-            if (len(self.default_username)>0):
+            if (len(self.default_username) > 0):
                 utils.execute('%s role grant Member %s %s' % (cmd, self.default_username, self.default_tenant))
                 utils.execute('%s role grant sysadmin %s %s' % (cmd, self.default_username, self.default_tenant))
                 utils.execute('%s role grant netadmin %s %s' % (cmd, self.default_username, self.default_tenant))
@@ -721,21 +836,21 @@ class ControllerConfig(Config):
             #endpointTemplates
             utils.execute(
                 "%s endpointTemplates add nova nova http://%s:%s/v1.1/%%tenant_id%% http://%s:8774/v1.1/%%tenant_id%%  http://%s:8774/v1.1/%%tenant_id%% 1 1" % (
-                cmd, self.osapi_hostname, self.osapi_port, self.ec2_dmz, self.ec2_dmz))
+                    cmd, self.osapi_hostname, self.osapi_port, self.ec2_dmz, self.ec2_dmz))
             utils.execute(
                 "%s endpointTemplates add nova glance http://%s:9292/v1.1/%%tenant_id%% http://%s:9292/v1.1/%%tenant_id%% http://%s:9292/v1.1/%%tenant_id%% 1 1" % (
-                cmd, self.glance_hostname, self.ec2_dmz, self.ec2_dmz))
+                    cmd, self.glance_hostname, self.ec2_dmz, self.ec2_dmz))
             utils.execute(
                 "%s endpointTemplates add nova keystone http://%s:5000/v2.0 http://%s:35357/v2.0 http://%s:5000/v2.0 1 1" % (
-                cmd, self.osapi_hostname, self.ec2_dmz, self.ec2_dmz))
+                    cmd, self.osapi_hostname, self.ec2_dmz, self.ec2_dmz))
 
-            utils.execute('%s token add %s admin admin 2015-02-05T00:00' % (cmd,self.TOKEN))
+            utils.execute('%s token add %s admin admin 2015-02-05T00:00' % (cmd, self.TOKEN))
 
             # endpoint
             utils.execute("%s endpoint add admin 1" % cmd)
             utils.execute("%s endpoint add admin 2" % cmd)
             utils.execute("%s endpoint add admin 3" % cmd)
-            if (len(self.default_username)>0):
+            if (len(self.default_username) > 0):
                 utils.execute("%s endpoint add %s 1" % (cmd, self.default_tenant))
                 utils.execute("%s endpoint add %s 2" % (cmd, self.default_tenant))
                 utils.execute("%s endpoint add %s 3" % (cmd, self.default_tenant))
@@ -743,10 +858,10 @@ class ControllerConfig(Config):
             # EC2 credentials
             utils.execute(
                 "%s credentials add admin EC2 'admin' '%s' admin || echo 'no support for adding credentials'" % (
-                cmd, self.admin_password))
-            if (len(self.default_username)>0):
+                    cmd, self.admin_password))
+            if (len(self.default_username) > 0):
                 utils.execute("%s credentials add %s EC2 '%s' '%s' %s || echo 'no support for adding credentials'" % (
-                cmd, self.default_username, self.default_username, self.default_password, self.default_tenant))
+                    cmd, self.default_username, self.default_username, self.default_password, self.default_tenant))
 
     def _configureHorizon(self):
         if self.use_horizon:
@@ -870,7 +985,7 @@ class ComputeConfig(Config):
         self.nova_port = self._filler.getPropertyValue(xmldoc, 'database', 'port', '3306')
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
 
         # RabbitMQ
         self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
@@ -894,25 +1009,25 @@ class ComputeConfig(Config):
 
         # Connect to shared filesystem
         self.instances_path = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'instances_path',
-                                                            '%s/instances' % self.state_path)
+            '%s/instances' % self.state_path)
         self.instances_filesystem_mount_type = self._filler.getPropertyValue(xmldoc, 'instances_filesystem',
-                                                                             'mount_type', 'local')
+            'mount_type', 'local')
 
         if self.instances_filesystem_mount_type == 'local':
             self.mount_point = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'mount_point', None)
             self.mount_parameters = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'mount_parameters',
-                                                                  None)
+                None)
         else:
             self.mount_point = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'mount_point',
-                                                             '192.168.10.198:/volumes/vol1/openstack-nfs-livemigration')
+                '192.168.10.198:/volumes/vol1/openstack-nfs-livemigration')
             self.mount_parameters = self._filler.getPropertyValue(xmldoc, 'instances_filesystem', 'mount_parameters',
-                                                                  'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
+                'rw,dev,noexec,nosuid,auto,nouser,noatime,async,rsize=8192,wsize=8192')
 
         # NOVA-VOLUME QEMU Specific
-        self.use_volume_nfs = self._filler.getPropertyValue(xmldoc, 'nas', 'use_nas','false') == 'true'
+        self.use_volume_nfs = self._filler.getPropertyValue(xmldoc, 'nas', 'use_nas', 'false') == 'true'
         if self.use_volume_nfs:
             self.volume_driver = self._filler.getPropertyValue(xmldoc, 'nas', 'volume_driver',
-                    'nova.volume.nas.QEMUDriver')
+                'nova.volume.nas.QEMUDriver')
             self.volumes_path = self._filler.getPropertyValue(xmldoc, 'nas', 'volumes_path', '/var/lib/nova/volumes')
             self.volumes_mount_point = self._filler.getPropertyValue(xmldoc, 'nas', 'mount_point',
                 '192.168.10.198:/volumes/vol1/openstack-nfs-volumes')
@@ -923,12 +1038,12 @@ class ComputeConfig(Config):
 
         # Boot behaviour and virtio
         self.resume_guests_state_on_host_boot = self._filler.getPropertyValue(xmldoc, 'libvirt',
-                                                                              'resume_guests_state_on_host_boot',
-                                                                              'true')
+            'resume_guests_state_on_host_boot',
+            'true')
         self.start_guests_on_host_boot = self._filler.getPropertyValue(xmldoc, 'libvirt', 'start_guests_on_host_boot',
-                                                                       'false')
+            'false')
         self.libvirt_use_virtio_for_bridges = self._filler.getPropertyValue(xmldoc, 'libvirt',
-                                                                            'libvirt_use_virtio_for_bridges', 'false')
+            'libvirt_use_virtio_for_bridges', 'false')
 
         self.hugepages = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages', 'false') == 'true'
         self.hugepages_percentage = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages_percentage', '100')
@@ -939,7 +1054,7 @@ class ComputeConfig(Config):
         self.glance_hostname = self._filler.getPropertyValue(xmldoc, 'glance', 'hostname', 'localhost')
         self.glance_port = self._filler.getPropertyValue(xmldoc, 'glance', 'port', '9292')
         self.image_service = self._filler.getPropertyValue(xmldoc, 'glance', 'image_service',
-                                                           'nova.image.glance.GlanceImageService')
+            'nova.image.glance.GlanceImageService')
         # Bonding configurarion
         self.management_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_network_bond')
         self.service_network_bond = self._filler.getPropertyValue(xmldoc, 'interfaces', 'service_network_bond')
@@ -978,13 +1093,13 @@ class ComputeConfig(Config):
                 # enable flat interface
                 utils.execute(
                     "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
-                    networkType, networkType, self.flat_interface))
+                        networkType, networkType, self.flat_interface))
             utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
 
     def _configureNFS(self):
         if self.instances_filesystem_mount_type == 'nfs':
             # configure NFS mount
-            mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.instances_path, self.mount_parameters)
+            mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.instances_path, self.mount_parameters)
             utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
@@ -995,7 +1110,7 @@ class ComputeConfig(Config):
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
         utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
-        mpoint = '%s %s nfs %s 0 0'  % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
+        mpoint = '%s %s nfs %s 0 0' % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
         utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
@@ -1009,9 +1124,10 @@ class ComputeConfig(Config):
     def _configureHugePages(self):
         # enable huge pages in the system
         machine = install.Machine()
-        pages = int(0.01 * int(self.hugepages_percentage) * int(machine.getMemoryAvailable() / self.PAGE_SIZE)) + self.BONUS_PAGES
+        pages = int(0.01 * int(self.hugepages_percentage) * int(
+            machine.getMemoryAvailable() / self.PAGE_SIZE)) + self.BONUS_PAGES
 
-        utils.execute("mkdir /dev/hugepages",check_exit_code=False)
+        utils.execute("mkdir /dev/hugepages", check_exit_code=False)
         utils.execute('sed -i /hugetlbfs/d /etc/fstab')
         utils.execute('echo "hugetlbfs       /dev/hugepages  hugetlbfs       defaults        0 0\n" >> /etc/fstab')
         utils.execute('mount -t hugetlbfs hugetlbfs /dev/hugepages')
@@ -1022,7 +1138,8 @@ class ComputeConfig(Config):
 
         # modify libvirt template to enable hugepages
         utils.execute("sed -i '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
-        utils.execute("sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
+        utils.execute(
+            "sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
 
     def _disableSwap(self):
         utils.execute('sed -i /swap/d /etc/fstab')
@@ -1032,21 +1149,24 @@ class ComputeConfig(Config):
         utils.execute("sed -i '/hugepages/d' /etc/apparmor.d/abstractions/libvirt-qemu")
         utils.execute("echo '  owner /dev/hugepages/libvirt/qemu/* rw,' >> /etc/apparmor.d/abstractions/libvirt-qemu")
 
-    def _configureLibvirt(self,hostname):
+    def _configureLibvirt(self, hostname):
         # share libvirt configuration to restore compute nodes
         if self.instances_filesystem_mount_type == 'nfs':
             path = '%s/libvirt/%s' % (self.instances_path, hostname)
             if not os.path.exists(path):
                 utils.execute('mkdir -p %s' % path, check_exit_code=False)
-                utils.execute('cp -fR /etc/libvirt/* %s/'  % path,check_exit_code=False)
-            utils.execute('rm -fR /etc/libvirt',check_exit_code=False)
-            utils.execute('ln -s %s /etc/libvirt' % path,check_exit_code=False)
-        # enable communication to libvirt
+                utils.execute('cp -fR /etc/libvirt/* %s/' % path, check_exit_code=False)
+            utils.execute('rm -fR /etc/libvirt', check_exit_code=False)
+            utils.execute('ln -s %s /etc/libvirt' % path, check_exit_code=False)
+            # enable communication to libvirt
         utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
         utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
         utils.execute('''sed -i 's/#auth_tcp = "sasl"/auth_tcp = "none"/g' /etc/libvirt/libvirtd.conf''')
-        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf.disabled''', check_exit_code=False)
-        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf''', check_exit_code=False)
+        utils.execute(
+            '''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf.disabled''',
+            check_exit_code=False)
+        utils.execute('''sed -i 's/env libvirtd_opts="-d"/env libvirtd_opts="-d -l"/g' /etc/init/libvirt-bin.conf''',
+            check_exit_code=False)
 
     def _configureGlusterFS(self):
         if self.instances_filesystem_mount_type == 'glusterfs':
@@ -1100,15 +1220,15 @@ class ComputeConfig(Config):
 
         # Test if management network interdfce is dhcp configured.
         interfaces_content = open('/etc/network/interfaces').read()
-        if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I|re.M):
+        if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I | re.M):
             return
 
         # Write new configuration.
         interfaces_content = templates['interfaces']
         if self.management_network_bond:
-            interfaces_content += templates['iface_bonding'] % {'iface':self.management_network_bond, 'bond':'bond0'}
+            interfaces_content += templates['iface_bonding'] % {'iface': self.management_network_bond, 'bond': 'bond0'}
         if self.service_network_bond:
-            interfaces_content += templates['iface_bonding'] % {'iface':self.service_network_bond, 'bond':'bond1'}
+            interfaces_content += templates['iface_bonding'] % {'iface': self.service_network_bond, 'bond': 'bond1'}
         with open('/etc/network/interfaces', 'w') as f:
             f.write(interfaces_content)
         if os.path.exists('/etc/modprobe.d/aliases.conf'):
@@ -1128,7 +1248,7 @@ class ComputeConfig(Config):
         if eth0_conf:
             eth0_conf = eth0_conf[0]
             utils.execute('modprobe bonding')
-            utils.execute('ifconfig bond0 %s netmask %s'%eth0_conf[2:])
+            utils.execute('ifconfig bond0 %s netmask %s' % eth0_conf[2:])
             utils.execute('ifenslave bond0 eth0')
             utils.execute('ifconfig eth1 up')
             utils.execute('ifconfig bond1 up')
@@ -1185,7 +1305,7 @@ class NetworkConfig(Config):
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
         self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
 
         # RabbitMQ
         self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
@@ -1201,7 +1321,7 @@ class NetworkConfig(Config):
 
         # Default Fixed range configuration
         self.network_manager = self._filler.getPropertyValue(xmldoc, 'network', 'type',
-                                                             'nova.network.manager.FlatDHCPManager')
+            'nova.network.manager.FlatDHCPManager')
         self.fixed_range = self._filler.getPropertyValue(xmldoc, 'network', 'fixed_range', '10.0.0.0/8')
         self.network_size = self._filler.getPropertyValue(xmldoc, 'network', 'network_size', '256')
         self.vlanstart = self._filler.getPropertyValue(xmldoc, 'network', 'vlanstart', '100')
@@ -1213,7 +1333,8 @@ class NetworkConfig(Config):
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface')
         self.public_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_interface')
         self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
-        self.bridged_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'bridged_interface', self.flat_interface)
+        self.bridged_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'bridged_interface',
+            self.flat_interface)
         iface_list = self._operatingsystem.getNetworkConfiguration()
         for iface in iface_list:
             if iface['name'] == self.management_interface:
@@ -1225,7 +1346,8 @@ class NetworkConfig(Config):
         self.public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip', '')
         self.public_ip_mask = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip_mask', '255.255.255.255')
         self.public_ip_gateway = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip_gateway', '')
-        self.firewall_public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'firewall_public_ip', 'false') == 'true'
+        self.firewall_public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'firewall_public_ip',
+            'false') == 'true'
 
         octets = self.fixed_range.split('/')[0].split('.')
         self.flat_network_dhcp_start = '%s.%s.%s.%i' % (octets[0], octets[1], octets[2], int(octets[3]) + 2)
@@ -1255,12 +1377,13 @@ class NetworkConfig(Config):
         self._writeFile(self._filename, parameters)
         return
 
-    def _addFloatingIP(self,ip_list):
+    def _addFloatingIP(self, ip_list):
         # Add floating ips
         if ip_list.startswith('['):
             ips = eval(ip_list)
             for ip in ips:
-                utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (self.nova_host,self.nova_port, self.nova_username, self.nova_password,ip))
+                utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (
+                self.nova_host, self.nova_port, self.nova_username, self.nova_password, ip))
         else:
             utils.execute('/var/lib/nova/bin/nova-manage float create %s' % ip_list)
 
@@ -1291,13 +1414,13 @@ class NetworkConfig(Config):
                 # enable flat interface
                 utils.execute(
                     "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
-                    networkType, networkType, self.flat_interface))
+                        networkType, networkType, self.flat_interface))
                 # Configure Public interface
                 if (self.public_ip_mask != '255.255.255.255'):
                     utils.execute(
                         "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s %s netmask %s\\n\\tpost-up route add default gw %s %s/g' /etc/network/interfaces" % (
-                        networkType, networkType, self.public_interface, self.public_ip, self.public_ip_mask,
-                        self.public_ip_gateway, self.public_interface))
+                            networkType, networkType, self.public_interface, self.public_ip, self.public_ip_mask,
+                            self.public_ip_gateway, self.public_interface))
 
             utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
             # Configure Public interface
@@ -1312,17 +1435,18 @@ class NetworkConfig(Config):
             if self.network_manager == 'nova.network.manager.VlanManager':
                 utils.execute(
                     '/var/lib/nova/bin/nova-manage network create service %s 1 %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                        self.fixed_range, self.network_size, self.vlanstart, self.bridged_interface, self.dns1, self.dns2))
+                        self.fixed_range, self.network_size, self.vlanstart, self.bridged_interface, self.dns1,
+                        self.dns2))
                 bridgeif = 'br%s' % self.vlanstart
             else:
                 utils.execute(
                     '/var/lib/nova/bin/nova-manage network create service %s 1 %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    self.fixed_range, self.network_size, self.bridge, self.bridged_interface, self.dns1, self.dns2))
-            # floating network
+                        self.fixed_range, self.network_size, self.bridge, self.bridged_interface, self.dns1, self.dns2))
+                # floating network
             self._addFloatingIP(self.floating_range)
 
             # add firewall to public ip if necessary
-            if self.firewall_public_ip and len(self.public_ip)>0:
+            if self.firewall_public_ip and len(self.public_ip) > 0:
                 self._addFirewallRules(self.public_ip, bridgeif)
 
             # enable ipforwarding
@@ -1342,7 +1466,7 @@ class NetworkConfig(Config):
         self._installDeb('bridge-utils')
         self._installDeb('dnsmasq-base')
         self._installDeb('iptables')
-        self._installDeb('iptables-persistent', interactive = False)
+        self._installDeb('iptables-persistent', interactive=False)
         self._installDeb('ebtables')
 
 
@@ -1377,7 +1501,7 @@ class VolumeConfig(Config):
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
         self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
 
         # RabbitMQ
         self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
@@ -1470,7 +1594,7 @@ class NexentaVolumeConfig(Config):
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
         self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-        self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
 
         # RabbitMQ
         self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
@@ -1485,7 +1609,7 @@ class NexentaVolumeConfig(Config):
         # NOVA-VOLUME Nexenta Specific
         self.use_local_volumes = self._filler.getPropertyValue(xmldoc, 'san', 'use_local_volumes', 'false')
         self.volume_driver = self._filler.getPropertyValue(xmldoc, 'san', 'volume_driver',
-                                                           'nova.volume.san.NexentaISCSIDriver')
+            'nova.volume.san.NexentaISCSIDriver')
         self.volume_group = self._filler.getPropertyValue(xmldoc, 'san', 'volume_group', 'vol1')
         self.san_thin_provision = self._filler.getPropertyValue(xmldoc, 'san', 'thin_provision', 'true')
         self.san_host = self._filler.getPropertyValue(xmldoc, 'san', 'host', '192.168.10.198')
@@ -1537,6 +1661,7 @@ class NexentaVolumeConfig(Config):
     def installPackages(self):
         self.installPackagesCommon()
         self._installDeb('python-paramiko')
+
 
 class QEMUVolumeConfig(Config):
     '''
@@ -1621,7 +1746,7 @@ class QEMUVolumeConfig(Config):
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
         utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
-        mpoint = '%s %s nfs %s 0 0'  % (self.mount_point, self.volumes_path, self.mount_parameters)
+        mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.volumes_path, self.mount_parameters)
         utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
@@ -1760,11 +1885,13 @@ class Configurator(object):
 
     def _configureXymonServer(self, xymon_ip):
         # Change default ntp server to client choice
-        self._installDeb('xymon-client', interactive = False)
+        self._installDeb('xymon-client', interactive=False)
         utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % xymon_ip)
         utils.execute("sed -i 's/.stackops.org//g' /etc/default/hobbit-client")
-        utils.execute("sed -i 's/grep -v tmpfs | awk/grep -v tmpfs | grep -v nfs | awk/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
-        utils.execute("sed -i 's/df -Pl -x iso9660/df -P -x iso9660/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
+        utils.execute(
+            "sed -i 's/grep -v tmpfs | awk/grep -v tmpfs | grep -v nfs | awk/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
+        utils.execute(
+            "sed -i 's/df -Pl -x iso9660/df -P -x iso9660/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
         utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
 
     def _blacklistFb(self):
@@ -1774,11 +1901,11 @@ class Configurator(object):
 
     def _publishKeys(self, authorized_keys, root_pass="", stackops_pass=""):
         # Publish keys and do not allow ssh user and pass
-        if len(authorized_keys)>0:
-            utils.execute("su stackops -c 'rm -fR ~/.ssh'",check_exit_code=False)
-            utils.execute("su stackops -c 'mkdir ~/.ssh'",check_exit_code=False)
+        if len(authorized_keys) > 0:
+            utils.execute("su stackops -c 'rm -fR ~/.ssh'", check_exit_code=False)
+            utils.execute("su stackops -c 'mkdir ~/.ssh'", check_exit_code=False)
             utils.execute("su stackops -c 'chmod 700 ~/.ssh'")
-            authorized_keys = authorized_keys.replace(',','\n')
+            authorized_keys = authorized_keys.replace(',', '\n')
             utils.execute("su stackops -c 'echo \"%s\" > /home/stackops/.ssh/authorized_keys'" % authorized_keys)
             utils.execute("su stackops -c 'chmod 600 ~/.ssh/authorized_keys'")
             utils.execute("sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config ")
@@ -1790,9 +1917,9 @@ class Configurator(object):
                 ssh_config.write('\nUseDNS no')
             utils.execute("adduser stackops sudo")
             utils.execute("service ssh restart")
-        if len(root_pass)>0:
+        if len(root_pass) > 0:
             utils.execute("echo 'root:%s'|chpasswd" % root_pass)
-        if len(stackops_pass)>0:
+        if len(stackops_pass) > 0:
             utils.execute("echo 'stackops:%s'|chpasswd" % stackops_pass)
 
     def detectConfiguration(self):
@@ -1819,22 +1946,22 @@ class Configurator(object):
             authorized_keys = None
             for component in xml.get_cloud().get_component():
                 if authorized_keys is None: # Only once...
-                    authorized_keys = self._filler.getPropertyValue(component, 'hardening', 'authorized_keys','')
-                    root_pass = self._filler.getPropertyValue(component, 'hardening', 'root_password','')
-                    stackops_pass = self._filler.getPropertyValue(component, 'hardening', 'stackops_password','')
-                    self._publishKeys(authorized_keys,root_pass,stackops_pass)
+                    authorized_keys = self._filler.getPropertyValue(component, 'hardening', 'authorized_keys', '')
+                    root_pass = self._filler.getPropertyValue(component, 'hardening', 'root_password', '')
+                    stackops_pass = self._filler.getPropertyValue(component, 'hardening', 'stackops_password', '')
+                    self._publishKeys(authorized_keys, root_pass, stackops_pass)
                 if ntpServer == None: # Only once...
                     ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
-                                                              'ntp.ubuntu.com')
+                        'ntp.ubuntu.com')
                     self._configureNTPClient(ntpServer)
                 if xymon_server == None: # Only once...
-                    xymon_server = self._filler.getPropertyValue(component, 'monitoring', 'xymon_server','')
-                    if len(xymon_server)>0:
+                    xymon_server = self._filler.getPropertyValue(component, 'monitoring', 'xymon_server', '')
+                    if len(xymon_server) > 0:
                         self._configureXymonServer(xymon_server)
                 if collectd_listener == None: # Only once...
                     collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
-                                                                  'localhost')
-                # Is a Controller?
+                        'localhost')
+                    # Is a Controller?
                 if component.get_name() == 'controller':
                     configType |= 1
                     self._controllerConfig.write(component)
@@ -1842,7 +1969,7 @@ class Configurator(object):
                     if len(result) > 0:
                         return result
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',
-                                                                'false') == 'true'
+                        'false') == 'true'
                     if use_nexenta:
                         self._nexentaVolumeConfig.write(component)
                         result = self._nexentaVolumeConfig.install(component, hostname)
@@ -1855,24 +1982,24 @@ class Configurator(object):
                         result = self._qemuVolumeConfig.install(component, hostname)
                         if len(result) > 0:
                             return result
-                    # Is a Compute?
+                            # Is a Compute?
                 if component.get_name() == 'compute':
                     configType |= 8
                     self._computeConfig.write(component)
                     result = self._computeConfig.install(component, hostname)
                     if len(result) > 0:
                         return result
-                    # Is a Network?
+                        # Is a Network?
                 if component.get_name() == 'network':
                     configType |= 2
                     self._networkConfig.write(component)
                     result = self._networkConfig.install(component, hostname)
                     if len(result) > 0:
                         return result
-                    # Is a Volume?
+                        # Is a Volume?
                 if component.get_name() == 'volume':
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',
-                                                                'false') == 'true'
+                        'false') == 'true'
                     use_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas',
                         'false') == 'true'
                     if not use_nexenta and not use_nfs:
@@ -1881,18 +2008,18 @@ class Configurator(object):
                         result = self._volumeConfig.install(component, hostname)
                         if len(result) > 0:
                             return result
-                # Add the rest of the components here...
-            #
-            #
-            #
-            # configType = 15, single node
-            # configType = 7, dual node controller
-            # configType = 1, 2, 4 multinode
-            # configType = 8 dual o multinode (compute node)
+                            # Add the rest of the components here...
+                            #
+                            #
+                            #
+                            # configType = 15, single node
+                            # configType = 7, dual node controller
+                            # configType = 1, 2, 4 multinode
+                            # configType = 8 dual o multinode (compute node)
 
-# Deprecated.
-#                    self._createCollectdConfigFile(configType,collectd_listener)
-#                    utils.execute('service collectd restart')
+                        # Deprecated.
+                        #                    self._createCollectdConfigFile(configType,collectd_listener)
+                        #                    utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'
@@ -1932,5 +2059,5 @@ iface %(iface)s inet manual
     bond-master %(bond)s
     """,
 
-}
+    }
 

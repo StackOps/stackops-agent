@@ -377,13 +377,27 @@ class GlanceConfig(Config):
 
     def _configureGlance(self):
         utils.execute(
-            "sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/glance/glance-api-paste.ini" % self.admin_password)
+            "sed -i 's/%SERVICE_PASSWORD%/%s/g' /etc/glance/glance-api-paste.ini" % self.admin_password)
         utils.execute(
-            "sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
+            "sed -i 's/%SERVICE_PASSWORD%/%s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
         utils.execute(
-            "sed -i 's#connection = sqlite:////var/lib/glance/glance.db#connection = %s#g' /etc/glance/glance-registry.conf" % self.glance_sql_connection)
-#        utils.execute(
-#            "sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+            "sed -i 's/%SERVICE_TENANT_NAME%/admin/g' /etc/glance/glance-api-paste.ini")
+        utils.execute(
+            "sed -i 's/%SERVICE_TENANT_NAME%/admin/g' /etc/glance/glance-registry-paste.ini")
+        utils.execute(
+            "sed -i 's/%SERVICE_USER%/admin/g' /etc/glance/glance-api-paste.ini")
+        utils.execute(
+            "sed -i 's/%SERVICE_USER%/admin/g' /etc/glance/glance-registry-paste.ini")
+        utils.execute(
+            "sed -i 's#sql_connection = sqlite:////var/lib/glance/glance.sqlite#connection = %s#g' /etc/glance/glance-registry.conf" % self.glance_sql_connection)
+        utils.execute('sed -i /[paste_deploy]/d /etc/glance/glance-registry.conf')
+        utils.execute('echo "[paste_deploy]" >> /etc/glance/glance-registry.conf')
+        utils.execute('sed -i /flavor = keystone/d /etc/glance/glance-registry.conf')
+        utils.execute('echo "flavor = keystone" >> /etc/glance/glance-registry.conf')
+        utils.execute('sed -i /[paste_deploy]/d /etc/glance/glance-api.conf')
+        utils.execute('echo "[paste_deploy]" >> /etc/glance/glance-api.conf')
+        utils.execute('sed -i /flavor = keystone/d /etc/glance/glance-api.conf')
+        utils.execute('echo "flavor = keystone" >> /etc/glance/glance-api.conf')
         utils.execute("glance-manage version_control 0")
         utils.execute("glance-manage db_sync")
         utils.execute("service glance-api restart && service glance-registry restart")

@@ -241,11 +241,46 @@ class KeystoneConfig(Config):
             'password')
         self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
         self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
+	self.endpoint = 'http://localhost:35357/v2.0'
         return
 
+    def get_id (self, str):
+        (stdout, stderr) = utils.execute("echo '%s' | awk '/ id / { print $4 }'" % str)
+	return stdout.replace('\n', '')
+
     def _configureKeystone(self):
-        utils.execute("sed -i 's@default_store = sqlite@default_store = mysql@g' /etc/keystone/keystone.conf")
-        return
+        utils.execute("sed -i 's/admin_token = ADMIN/admin_token = %s/g' /etc/keystone/keystone.conf" % self.admin_password)
+        utils.execute("sed -i 's#connection = sqlite:////var/lib/keystone/keystone.db#connection = %s#g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
+	utils.execute("sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+	utils.execute("service keystone restart")
+	utils.execute("keystone-manage db_sync")
+	# Configure service users/roles
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s tenant-create --name=admin' % (self.endpoint, self.admin_password))
+	admin_tenant = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s tenant-create --name=service' % (self.endpoint, self.admin_password))
+	service_tenant = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=admin --pass=%s --email=admin@domain.com' % (self.endpoint, self.admin_password, self.admin_password))
+        admin_user = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=nova --pass=%s --tenant_id %s --email=nova@domain.com' % (self.endpoint, self.admin_password, self.admin_password, service_tenant))
+        nova_user = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-create --name=glance --pass=%s --tenant_id %s --email=glance@domain.com' % (self.endpoint, self.admin_password, self.admin_password, service_tenant))
+        glance_user = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=admin' % (self.endpoint, self.admin_password))
+	admin_role = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=KeystoneAdmin' % (self.endpoint, self.admin_password))
+	keystone_admin_role = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=KeystoneServiceAdmin' % (self.endpoint, self.admin_password))
+	keystone_service_admin_role = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s role-create --name=Member' % (self.endpoint, self.admin_password))
+	member_role = self.get_id(stdout)
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, admin_role, admin_tenant))
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, keystone_admin_role, admin_tenant))
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, admin_user, keystone_service_admin_role, admin_tenant))
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, nova_user, admin_role, service_tenant))
+	(stdout, stderr) = utils.execute('keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (self.endpoint, self.admin_password, glance_user, admin_role, service_tenant))
+
+
+	return
 
 
     def install(self, hostname):
@@ -266,13 +301,13 @@ class KeystoneConfig(Config):
         """
         Keystone uninstall process
         """
-        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient", check_exit_code=False)
+        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient python-mysqldb", check_exit_code=False)
         utils.execute("apt-get -y autoremove", check_exit_code=False)
         return
 
     def installPackages(self):
         self.installPackagesCommon()
-        self._installDeb('keystone python-keystone python-keystoneclient')
+        self._installDeb('keystone python-keystone python-keystoneclient python-mysqldb')
         return
 
 class ControllerConfig(Config):

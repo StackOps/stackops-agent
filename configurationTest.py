@@ -141,15 +141,26 @@ class KeystoneConfigTest(unittest.TestCase):
         pass
 
     def tearDown(self):
-        c =configuration.KeystoneConfig()
-        c.uninstall(hostname='stackops-node')
-        c =configuration.RabbitMQMasterConfig()
-        c.uninstall(hostname='stackops-node')
-        self._uninstallMySQLServer()
+#        c =configuration.KeystoneConfig()
+#        c.uninstall(hostname='stackops-node')
+#        c =configuration.RabbitMQMasterConfig()
+#        c.uninstall(hostname='stackops-node')
+#        self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
         c =configuration.KeystoneConfig()
+        c.keystone_username = 'keystone'
+        c.keystone_password = 'stackops'
+        c.keystone_host = '127.0.0.1'
+        c.keystone_port = '3306'
+        c.keystone_schema = 'keystone'
+        c.keystone_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (c.keystone_username, c.keystone_password, c.keystone_host, c.keystone_port,c.keystone_schema)
+        c.admin_password = 'password'
+        c.default_password = 'password'
+        c.default_username = ''
+        c.default_tenant = ''
+        c.endpoint = 'http://localhost:35357/v2.0'
         c._configureKeystone()
 #        (stdout, stderr) = utils.execute("service rabbitmq-server status")
 #        self.assertTrue('running' in stdout)

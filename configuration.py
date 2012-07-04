@@ -223,8 +223,8 @@ class RabbitMQMasterConfig(Config):
         """
         RabbitMQ uninstall process
         """
-        utils.execute("apt-get -y remove rabbitmq-server memcached python-memcache", check_exit_code=False)
-        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        utils.execute("apt-get -y --purge remove rabbitmq-server memcached python-memcache", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
         return
 
     def installPackages(self):
@@ -341,9 +341,9 @@ class KeystoneConfig(Config):
         """
         Keystone uninstall process
         """
-        utils.execute("apt-get -y remove keystone python-keystone python-keystoneclient python-mysqldb",
+        utils.execute("apt-get -y --purge remove keystone python-keystone python-keystoneclient python-mysqldb",
             check_exit_code=False)
-        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
         return
 
 

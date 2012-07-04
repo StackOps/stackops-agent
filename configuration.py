@@ -377,26 +377,26 @@ class GlanceConfig(Config):
 
     def _configureGlance(self):
         utils.execute(
-            "sed -i 's/%SERVICE_PASSWORD%/%s/g' /etc/glance/glance-api-paste.ini" % self.admin_password)
+            "sed -i 's/%%SERVICE_PASSWORD%%/%s/g' /etc/glance/glance-api-paste.ini" % self.admin_password)
         utils.execute(
-            "sed -i 's/%SERVICE_PASSWORD%/%s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
+            "sed -i 's/%%SERVICE_PASSWORD%%/%s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
         utils.execute(
-            "sed -i 's/%SERVICE_TENANT_NAME%/admin/g' /etc/glance/glance-api-paste.ini")
+            "sed -i 's/%%SERVICE_TENANT_NAME%%/admin/g' /etc/glance/glance-api-paste.ini")
         utils.execute(
-            "sed -i 's/%SERVICE_TENANT_NAME%/admin/g' /etc/glance/glance-registry-paste.ini")
+            "sed -i 's/%%SERVICE_TENANT_NAME%%/admin/g' /etc/glance/glance-registry-paste.ini")
         utils.execute(
-            "sed -i 's/%SERVICE_USER%/admin/g' /etc/glance/glance-api-paste.ini")
+            "sed -i 's/%%SERVICE_USER%%/admin/g' /etc/glance/glance-api-paste.ini")
         utils.execute(
-            "sed -i 's/%SERVICE_USER%/admin/g' /etc/glance/glance-registry-paste.ini")
+            "sed -i 's/%%SERVICE_USER%%/admin/g' /etc/glance/glance-registry-paste.ini")
         utils.execute(
             "sed -i 's#sql_connection = sqlite:////var/lib/glance/glance.sqlite#connection = %s#g' /etc/glance/glance-registry.conf" % self.glance_sql_connection)
-        utils.execute('sed -i /[paste_deploy]/d /etc/glance/glance-registry.conf')
+        utils.execute('sed -i "/[paste_deploy]/d" /etc/glance/glance-registry.conf')
         utils.execute('echo "[paste_deploy]" >> /etc/glance/glance-registry.conf')
-        utils.execute('sed -i /flavor = keystone/d /etc/glance/glance-registry.conf')
+        utils.execute('sed -i "/flavor = keystone/d" /etc/glance/glance-registry.conf')
         utils.execute('echo "flavor = keystone" >> /etc/glance/glance-registry.conf')
-        utils.execute('sed -i /[paste_deploy]/d /etc/glance/glance-api.conf')
+        utils.execute('sed -i "/[paste_deploy]/d" /etc/glance/glance-api.conf')
         utils.execute('echo "[paste_deploy]" >> /etc/glance/glance-api.conf')
-        utils.execute('sed -i /flavor = keystone/d /etc/glance/glance-api.conf')
+        utils.execute('sed -i "/flavor = keystone/d" /etc/glance/glance-api.conf')
         utils.execute('echo "flavor = keystone" >> /etc/glance/glance-api.conf')
         utils.execute("glance-manage version_control 0")
         utils.execute("glance-manage db_sync")
@@ -422,9 +422,9 @@ class GlanceConfig(Config):
         """
         Keystone uninstall process
         """
-        utils.execute("apt-get -y remove glance glance-api glance-client glance-common glance-registry python-mysqldb",
+        utils.execute("apt-get -y --purge remove glance glance-api glance-client glance-common glance-registry python-mysqldb",
             check_exit_code=False)
-        utils.execute("apt-get -y autoremove", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
         return
 
     def installPackages(self):

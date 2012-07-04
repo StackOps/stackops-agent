@@ -141,11 +141,11 @@ class KeystoneConfigTest(unittest.TestCase):
         pass
 
     def tearDown(self):
-#        c =configuration.KeystoneConfig()
-#        c.uninstall(hostname='stackops-node')
-#        c =configuration.RabbitMQMasterConfig()
-#        c.uninstall(hostname='stackops-node')
-#        self._uninstallMySQLServer()
+        c =configuration.KeystoneConfig()
+        c.uninstall(hostname='stackops-node')
+        c =configuration.RabbitMQMasterConfig()
+        c.uninstall(hostname='stackops-node')
+        self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):

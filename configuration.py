@@ -169,7 +169,6 @@ class MySQLMasterConfig(Config):
             utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
                 self.mysql_root_password, self.keystone_schema, self.keystone_username, self.keystone_password))
 
-
     def install(self, hostname):
         """
         Install all stuff needed to run a mysql database for Nova
@@ -1081,7 +1080,8 @@ class NovaComputeConfig(Config):
         if len(self.public_ip)>0:
             self.vncproxy_host = self.public_ip
         else:
-            self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.my_ip)
+            self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
+            self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.ec2_hostname)
         self.vncproxy_port = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'port', '6080')
         self.vncproxy_type = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'type', 'http')
 

@@ -28,7 +28,7 @@ wget http://stackops.s3.amazonaws.com/images/$IMAGE_NAME.tar.gz -O /tmp/$IMAGE_N
 mkdir -p /tmp/images
 tar -zxf /tmp/$IMAGE_NAME.tar.gz  -C /tmp/images
 
-RVAL=`glance add --os_username=$NOVA_USERNAME --os_password=$NOVA_PASSWORD --os_tenant_name=$NOVA_TENANT_NAME --os_auth_url=http://$HOST_IP:5000/v2.0/  name="ttylinux-kernel" is_public=true container_format=aki disk_format=aki < /tmp/images/$IMAGE_NAME-vmlinuz*`
+RVAL=`glance add --silent-upload --os_username=$NOVA_USERNAME --os_password=$NOVA_PASSWORD --os_tenant_name=$NOVA_TENANT_NAME --os_auth_url=http://$HOST_IP:5000/v2.0/  name="ttylinux-kernel" is_public=true container_format=aki disk_format=aki < /tmp/images/$IMAGE_NAME-vmlinuz*`
 echo ""
 echo $RVAL
 KERNEL_ID=`echo $RVAL | cut -d":" -f2 | tr -d " "`

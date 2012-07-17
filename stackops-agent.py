@@ -74,7 +74,8 @@ def showError(txt):
     str += '<title>ERROR!</title>'
     str += '</head>'
     str += '<body>'
-    str += txt.replace("\n","<br />\n")
+    if txt is not None:
+        str += txt.replace("\n","<br />\n")
     str += '</html>'
     return str
 
@@ -94,7 +95,7 @@ class ThreadedResource(resource.Resource):
 #main server resource
 class Root(ThreadedResource):
 
-    _configurator = configuration.Configurator()
+    _configurator = configuration.OSConfigurator()
         
     def GET(self, request):
         xml = self._configurator.detectConfiguration()
@@ -123,6 +124,10 @@ class Root(ThreadedResource):
 
     def POST(self, request):
         try:
+            if not os.path.exists('/etc/nova'):
+                request.setResponseCode(500)
+                return showError('/etc/nova config path does not exists')
+
             with open(_status_file, 'w') as f:
                 f.write('CONFIGURING')
             str = request.args['sysinfo'][0]
@@ -139,7 +144,7 @@ class Root(ThreadedResource):
         except:
             er=log.err()
             request.setResponseCode(500)
-            return er
+            return showError(er)
 
     def getChild(self, name, request):
         if name == '':
@@ -152,7 +157,7 @@ class Root(ThreadedResource):
 
 class GetConfiguration(ThreadedResource):
 
-    _configurator = configuration.Configurator()
+    _configurator = configuration.OSConfigurator()
     
     def GET(self, request):
         try:

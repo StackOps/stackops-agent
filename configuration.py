@@ -843,6 +843,8 @@ class NovaNetworkConfig(Config):
         self.dhcpbridge = self._filler.getPropertyValue(xmldoc, 'dhcpbridge', 'process', '/usr/bin/nova-dhcpbridge')
         self.dhcpbridge_flagfile = self._filler.getPropertyValue(xmldoc, 'dhcpbridge', 'file',
             '/etc/nova/nova-network-stackops.conf')
+        if self.dhcpbridge_flagfile == '/etc/nova/nova-network.conf':
+            self.dhcpbridge_flagfile = '/etc/nova/nova-network-stackops.conf'
         self.routing_source_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'routing_source_ip', None)
         self.floating_range = self._filler.getPropertyValue(xmldoc, 'interfaces', 'floating_range', None)
 
@@ -926,7 +928,7 @@ class NovaNetworkConfig(Config):
                 utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (
                     self.nova_host, self.nova_port, self.nova_username, self.nova_password, ip))
         else:
-            utils.execute('nova-manage float create %s' % ip_list)
+            utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
 
     def _addFirewallRules(self, publicip, bridgeif):
         utils.execute("service iptables-persistent flush", check_exit_code=False)
@@ -967,15 +969,15 @@ class NovaNetworkConfig(Config):
     def _createDefaultNetworks(self):
         if self.network_manager == 'nova.network.manager.VlanManager':
             utils.execute(
-                'nova-manage network create service %s %s %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    self.fixed_range, self.network_number, self.network_size, self.vlanstart, self.bridged_interface,
+                'nova-manage --flagfile=%s network create service %s %s %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.vlanstart, self.bridged_interface,
                     self.dns1,
                     self.dns2))
             bridgeif = 'br%s' % self.vlanstart
         else:
             utils.execute(
-                'nova-manage network create service %s %s %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    self.fixed_range, self.network_number, self.network_size, self.bridge, self.bridged_interface,
+                'nova-manage  --flagfile=%s network create service %s %s %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.bridge, self.bridged_interface,
                     self.dns1, self.dns2))
             bridgeif = 'br100'
         return bridgeif
@@ -1139,7 +1141,7 @@ class NovaComputeConfig(Config):
         self.start_guests_on_host_boot = self._filler.getPropertyValue(xmldoc, 'libvirt', 'start_guests_on_host_boot',
             'false')
         self.libvirt_use_virtio_for_bridges = self._filler.getPropertyValue(xmldoc, 'libvirt',
-            'libvirt_use_virtio_for_bridges', 'false')
+            'libvirt_use_virtio_for_bridges', 'true')
 
         self.hugepages = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages', 'false') == 'true'
         self.hugepages_percentage = self._filler.getPropertyValue(xmldoc, 'libvirt', 'hugepages_percentage', '100')
@@ -1188,6 +1190,9 @@ class NovaComputeConfig(Config):
         utils.execute("service nova-compute stop", check_exit_code=False)
         utils.execute(
             "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-compute.conf" % '--flagfile=/etc/nova/nova-compute-stackops.conf')
+        utils.execute(
+            "sed -i 's#--flagfile=/etc/nova/nova-compute.conf#%s#g' /etc/init/nova-compute.conf" % ' ')
+        utils.execute("rm -f /etc/nova/nova-compute.conf", check_exit_code=True)
         if os.path.exists(self.state_path):
             utils.execute('chown nova:nova -R %s' % self.state_path)
         utils.execute("service nova-compute start")

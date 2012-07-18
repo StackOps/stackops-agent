@@ -1,0 +1,18 @@
+Source: stackops-agent
+Section: python
+Priority: optional
+Maintainer: StackOps Developers <developers@stackops.com>
+Uploaders: Ghe Rivero <ghe.rivero@stackops.com>
+Build-Depends: debhelper (>= 7.0.50)
+Standards-Version: 3.9.3
+Homepage: http://www.stackops.com
+
+Package: stackops-agent
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
+ python-twisted,
+ ntp,
+ python
+Description: StackOps agent
+ stackops agent
+

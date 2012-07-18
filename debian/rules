@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+# Verbose mode
+export DH_VERBOSE=1
+export DH_OPTIONS=-v
+
+PKG_DIR=$(CURDIR)/debian/stackops-agent/
+LIB_DIR=$(PKG_DIR)/var/lib/stackops/
+
+%:
+	dh $@
+
+override_dh_install:
+	dh_install
+	chmod 700 $(LIB_DIR)/*.sh

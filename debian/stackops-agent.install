@@ -1,0 +1,7 @@
+scripts/etc /
+scripts/var /
+*.py var/lib/stackops/
+*.conf var/lib/stackops/
+*.iptables var/lib/stackops/
+django.wsgi var/lib/stackops/
+sslcert.* var/lib/stackops/

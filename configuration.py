@@ -2129,9 +2129,13 @@ class OSConfigurator(object):
                     if len(result) > 0: return result
 
                     # Install Horizon
-                    self._horizonConfig.write(component)
-                    result = self._horizonConfig.install(hostname)
-                    if len(result) > 0: return result
+
+                    # Configure Horizon
+                    use_horizon = self._filler.getPropertyValue(component, 'horizon', 'enabled', 'true') == 'true'
+                    if use_horizon:
+                        self._horizonConfig.write(component)
+                        result = self._horizonConfig.install(hostname)
+                        if len(result) > 0: return result
 
                     # If we have to use Nexenta, install nova-volume for nexenta here
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',

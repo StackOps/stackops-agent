@@ -80,11 +80,11 @@ class VanillaConfig(object):
 
     def whatIsMyIp(self, management_interface):
         iface_list = self._operatingsystem.getNetworkConfiguration()
-        my_ip = '127.0.0.1'
+        myip = '127.0.0.1'
         for iface in iface_list:
             if iface['name'] == management_interface:
-                self.my_ip = iface['address']
-        return my_ip
+                myip = iface['address']
+        return myip
 
 
 class Config(VanillaConfig):
@@ -1080,7 +1080,7 @@ class NovaComputeConfig(Config):
         # NOVA-VNCPROXY configruration
         self.public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip', '')
         if len(self.public_ip)>0:
-            self.vncproxy_host = self.public_ip
+            self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.public_ip)
         else:
             self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
             self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.ec2_hostname)

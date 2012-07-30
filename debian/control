@@ -14,5 +14,5 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
  ntp,
  python
 Description: StackOps agent
- stackops agent
+ stackops agents deployed to all nodes in the zone
 

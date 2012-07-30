@@ -13,3 +13,7 @@ LIB_DIR=$(PKG_DIR)/var/lib/stackops/
 override_dh_install:
 	dh_install
 	chmod 700 $(LIB_DIR)/*.sh
+
+override_dh_clean:
+	rm -fr stackops.egg-info
+	dh_clean

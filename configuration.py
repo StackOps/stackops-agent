@@ -293,15 +293,24 @@ class KeystoneConfig(Config):
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s tenant-create --name=service' % (self.endpoint, self.admin_password))
         service_tenant = self.get_id(stdout)
+        # StackOps Portal default tenant
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s tenant-create --name=portal' % (self.endpoint, self.admin_password))
+        portal_tenant = self.get_id(stdout)
+
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-create --name=admin --pass=%s --email=admin@domain.com' % (
                 self.endpoint, self.admin_password, self.admin_password))
         admin_user = self.get_id(stdout)
+        # Stackops Portal default user
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-create --name=portal --pass=%s --tenant_id %s --email=portal@domain.com' % (
+                self.endpoint, self.admin_password, self.admin_password, portal_tenant))
+        portal_user = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-create --name=nova --pass=%s --tenant_id %s --email=nova@domain.com' % (
                 self.endpoint, self.admin_password, self.admin_password, service_tenant))
         nova_user = self.get_id(stdout)
-
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-create --name=glance --pass=%s --tenant_id %s --email=glance@domain.com' % (
                 self.endpoint, self.admin_password, self.admin_password, service_tenant))
@@ -319,6 +328,13 @@ class KeystoneConfig(Config):
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s role-create --name=Member' % (self.endpoint, self.admin_password))
         member_role = self.get_id(stdout)
+        # StackOps Portal role
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_ADMIN' % (self.endpoint, self.admin_password))
+        portal_admin_role = self.get_id(stdout)
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_USER' % (self.endpoint, self.admin_password))
+        portal_user_role = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
                 self.endpoint, self.admin_password, admin_user, admin_role, admin_tenant))
@@ -328,6 +344,13 @@ class KeystoneConfig(Config):
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
                 self.endpoint, self.admin_password, admin_user, keystone_service_admin_role, admin_tenant))
+        # StackOps Portal user-role-add
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+                self.endpoint, self.admin_password, portal_user, portal_admin_role, portal_tenant))
+        (stdout, stderr) = utils.execute(
+            'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
+                self.endpoint, self.admin_password, portal_user, portal_user_role, portal_tenant))
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
                 self.endpoint, self.admin_password, nova_user, admin_role, service_tenant))

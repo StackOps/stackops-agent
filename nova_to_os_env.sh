@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # This file is intended to be sourced to convert old-style NOVA environment
 # variables to new-style OS.
 #

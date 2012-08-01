@@ -18,19 +18,21 @@
 # Original code from www.devstack.org
 
 HOST_IP=${HOST:-127.0.0.1}
-NOVA_TENANT_ID=${TENANT:-1}
+NOVA_TENANT_NAME=${TENANT:-admin}
 NOVA_USERNAME=${USERNAME:-admin}
-NOVA_API_KEY=${ADMIN_PASSWORD:-password}
+NOVA_PASSWORD=${ADMIN_PASSWORD:-password}
 
-SERVICE_TOKEN=`curl -s -d "{\"auth\":{\"passwordCredentials\": {\"username\": \"$NOVA_USERNAME\", \"password\": \"$NOVA_API_KEY\"}, \"tenantId\": \"$NOVA_TENANT_ID\"}}" -H "Content-type: application/json" http://$HOST_IP:5000/v2.0/tokens | python -c "import sys; import json; tok = json.loads(sys.stdin.read()); print tok['access']['token']['id'];"`
-
-IMAGE_NAME='lucid-server-cloudimg-amd64'
+IMAGE_NAME='ttylinux-uec-amd64-12.1_2.6.35-22_1'
 echo "Downloading images..."
-wget http://cloud-images.ubuntu.com/lucid/current/$IMAGE_NAME.tar.gz -O /tmp/$IMAGE_NAME.tar.gz
+wget http://stackops.s3.amazonaws.com/images/$IMAGE_NAME.tar.gz -O /tmp/$IMAGE_NAME.tar.gz
 
 mkdir -p /tmp/images
 tar -zxf /tmp/$IMAGE_NAME.tar.gz  -C /tmp/images
 
-RVAL=`glance add -A $SERVICE_TOKEN name="ubuntu-10.04.2-kernel" is_public=true container_format=aki disk_format=aki < /tmp/images/$IMAGE_NAME-vmlinuz*`
+RVAL=`glance add --silent-upload --os_username=$NOVA_USERNAME --os_password=$NOVA_PASSWORD --os_tenant_name=$NOVA_TENANT_NAME --os_auth_url=http://$HOST_IP:5000/v2.0/  name="ttylinux-kernel" is_public=true container_format=aki disk_format=aki < /tmp/images/$IMAGE_NAME-vmlinuz*`
+echo ""
+echo $RVAL
 KERNEL_ID=`echo $RVAL | cut -d":" -f2 | tr -d " "`
-glance add -A $SERVICE_TOKEN name="ubuntu-10.04.2" is_public=true container_format=ami disk_format=ami kernel_id=$KERNEL_ID < /tmp/images/$IMAGE_NAME.img
+echo ""
+echo $KERNEL_ID
+glance add --os_username=$NOVA_USERNAME --os_password=$NOVA_PASSWORD --os_tenant_name=$NOVA_TENANT_NAME --os_auth_url=http://$HOST_IP:5000/v2.0/  name="ttylinux" is_public=true container_format=ami disk_format=ami kernel_id=$KERNEL_ID < /tmp/images/$IMAGE_NAME.img

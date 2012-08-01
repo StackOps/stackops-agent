@@ -1,0 +1,10 @@
+dist
+dist/*
+.settings
+.settings/*
+*.pyc
+build.sh
+config.sh
+*.xml
+*Test.py
+*.html

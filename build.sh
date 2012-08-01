@@ -21,24 +21,17 @@ fi
 
 rm -fR dist
 mkdir dist
-rm -fR build
-mkdir build
-cd build
 
-cp -fR ../scripts/* .
-cp -fR ../*.py var/lib/stackops/
-cp -fR ../*.conf var/lib/stackops/
-cp -fR ../*.iptables var/lib/stackops/
-cp -fR ../django.wsgi var/lib/stackops/
-cp -fR ../sslcert.* var/lib/stackops/
-chmod 700 var/lib/stackops/*.sh
+#cp -fR ../scripts/* .
+#cp -fR ../*.py var/lib/stackops/
+#cp -fR ../*.conf var/lib/stackops/
+#cp -fR ../*.iptables var/lib/stackops/
+#cp -fR ../django.wsgi var/lib/stackops/
+#cp -fR ../sslcert.* var/lib/stackops/
+chmod 700 *.sh
 
-tar cvf ../dist/stackops-agent-$VERSION.tar *
-gzip ../dist/stackops-agent-$VERSION.tar
+tar cvf dist/stackops-agent-$VERSION.tar -X exclude.pak *
+gzip dist/stackops-agent-$VERSION.tar
 if [ "$DEV" != "true" ]; then
-    s3cmd put --acl-public --guess-mime-type ../dist/stackops-agent-$VERSION.tar.gz s3://stackops/stackops-agent-$VERSION.tar.gz
+    s3cmd put --acl-public --guess-mime-type dist/stackops-agent-$VERSION.tar.gz s3://stackops/stackops-agent-$VERSION.tar.gz
 fi
-
-cd ..
-
-rm -fR build

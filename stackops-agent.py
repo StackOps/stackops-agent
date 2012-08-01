@@ -22,6 +22,7 @@ import StringIO
 import threading
 import time
 import os
+import traceback
 import urllib
 from twisted.internet import reactor, threads
 from twisted.web import server, resource
@@ -74,7 +75,8 @@ def showError(txt):
     str += '<title>ERROR!</title>'
     str += '</head>'
     str += '<body>'
-    str += txt.replace("\n","<br />\n")
+    if txt is not None:
+        str += txt.replace("\n","<br />\n")
     str += '</html>'
     return str
 
@@ -94,7 +96,7 @@ class ThreadedResource(resource.Resource):
 #main server resource
 class Root(ThreadedResource):
 
-    _configurator = configuration.Configurator()
+    _configurator = configuration.OSConfigurator()
         
     def GET(self, request):
         xml = self._configurator.detectConfiguration()
@@ -123,6 +125,10 @@ class Root(ThreadedResource):
 
     def POST(self, request):
         try:
+            if not os.path.exists('/etc/nova'):
+                request.setResponseCode(500)
+                return showError('/etc/nova config path does not exists')
+
             with open(_status_file, 'w') as f:
                 f.write('CONFIGURING')
             str = request.args['sysinfo'][0]
@@ -137,9 +143,10 @@ class Root(ThreadedResource):
                 request.setResponseCode(500)
                 return showError(result)
         except:
-            er=log.err()
+            request.setHeader('content-type', 'text/html')
+            er = traceback.format_exc()
             request.setResponseCode(500)
-            return er
+            return showError(er)
 
     def getChild(self, name, request):
         if name == '':
@@ -152,7 +159,7 @@ class Root(ThreadedResource):
 
 class GetConfiguration(ThreadedResource):
 
-    _configurator = configuration.Configurator()
+    _configurator = configuration.OSConfigurator()
     
     def GET(self, request):
         try:
@@ -162,9 +169,10 @@ class GetConfiguration(ThreadedResource):
             xml.export(output,0)
             return output.getvalue()
         except:
-            er = log.err()
+            request.setHeader('content-type', 'text/html')
+            er = traceback.format_exc()
             request.setResponseCode(500)
-            return er
+            return showError(er)
 
     def POST(self, request):
         try:
@@ -182,9 +190,10 @@ class GetConfiguration(ThreadedResource):
                 request.setResponseCode(500)
                 return showError(result)
         except:
-            er=log.err()
+            request.setHeader('content-type', 'text/html')
+            er = traceback.format_exc()
             request.setResponseCode(500)
-            return er
+            return showError(er)
 
 class GetTermination(ThreadedResource):
 
@@ -201,11 +210,6 @@ class GetTermination(ThreadedResource):
 
     def POST(self, request):
         self.render_GET(request)
-        
-class PageNotFoundError(ThreadedResource):
-
-    def GET(self, request):
-        return 'Page Not Found!'
 
 class GetStatusAPI(ThreadedResource):
 
@@ -213,12 +217,56 @@ class GetStatusAPI(ThreadedResource):
         request.setHeader('content-type', 'text/xml')
         return status.get_xml_status()
 
+class GetLog(ThreadedResource):
+
+    def _tail(self, f, n, offset=None):
+        """Reads a n lines from f with an offset of offset lines.  The return
+        value is a tuple in the form ``(lines, has_more)`` where `has_more` is
+        an indicator that is `True` if there are more lines in the file.
+        """
+        avg_line_length = 74
+        to_read = n + (offset or 0)
+
+        while 1:
+            try:
+                f.seek(-(avg_line_length * to_read), 2)
+            except IOError:
+                # woops.  apparently file is smaller than what we want
+                # to step back, go to the beginning instead
+                f.seek(0)
+            pos = f.tell()
+            lines = f.read().splitlines()
+            if len(lines) >= to_read or pos == 0:
+                return lines[-to_read:offset and -offset or None],\
+                       len(lines) > to_read or pos > 0
+            avg_line_length *= 1.3
+
+    def GET(self, request):
+        try:
+            f = open('/var/log/stackops/stackops-agent.py.log')
+        except Exception as e:
+            request.setHeader('content-type', 'text/html')
+            er = traceback.format_exc()
+            request.setResponseCode(500)
+            return showError(er)
+        request.setHeader('content-type', 'text/plain')
+        (log_content, llength) = self._tail(f,1000)
+        f.close()
+        return "\n".join(log_content)
+
+class PageNotFoundError(ThreadedResource):
+
+    def GET(self, request):
+        return 'Page Not Found!'
+
+
 #to make the process of adding new views less static
 VIEWS = {
     'configuration': GetConfiguration(),
     'termination': GetTermination(),
     'status': GetStatusAPI(),
-}
+    'log': GetLog(),
+    }
 
 if __name__ == '__main__':
     s = len(sys.argv)

@@ -24,6 +24,7 @@ import time
 import os
 import traceback
 import urllib
+import cgi
 from twisted.internet import reactor, threads
 from twisted.web import server, resource
 from twisted.web.static import File

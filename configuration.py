@@ -131,6 +131,13 @@ class MySQLMasterConfig(Config):
         self.keystone_drop_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'dropschema',
             'true') == 'true'
 
+        # PORTAL database configuration
+        self.portal_username = self._filler.getPropertyValue(xmldoc, 'portal_database', 'username', 'portal')
+        self.portal_password = self._filler.getPropertyValue(xmldoc, 'portal_database', 'password', 'portal')
+        self.portal_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'schema', 'portal')
+        self.portal_drop_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'dropschema',
+            'true') == 'true'
+
         return
 
     def _configureMySQL(self):
@@ -145,13 +152,23 @@ class MySQLMasterConfig(Config):
         if self.keystone_drop_schema:
             utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password,
                 check_exit_code=False)
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.nova_schema))
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.glance_schema))
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.keystone_schema))
+        if self.portal_drop_schema:
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS portal;"' % self.mysql_root_password,
+                check_exit_code=False)
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.nova_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.glance_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.keystone_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.portal_schema))
 
+        utils.execute(
+            '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
+                self.mysql_root_password, self.portal_schema, self.portal_username, self.portal_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
+            self.mysql_root_password, self.portal_schema, self.portal_username, self.portal_password))
         if self.nova_username == 'root' and self.glance_username == 'root' and self.keystone_username == 'root':
             utils.execute(
-                '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password,self.mysql_root_password))
+                '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' IDENTIFIED BY '%s';"''' % (
+                    self.mysql_root_password, self.mysql_root_password))
         else:
             utils.execute(
                 '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
@@ -271,6 +288,7 @@ class KeystoneConfig(Config):
         self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
         self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
         self.endpoint = 'http://localhost:35357/v2.0'
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
         return
 
     def get_id(self, str):
@@ -284,6 +302,32 @@ class KeystoneConfig(Config):
             "sed -i 's#connection = sqlite:////var/lib/keystone/keystone.db#connection = %s#g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
         utils.execute(
             "sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+
+        utils.execute('sed -i /catalog.RegionOne.identity.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.compute.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.volume.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.ec2.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.image.publicURL/d /etc/keystone/default_catalog.templates')
+
+        public_ip = self.ec2_hostname
+        public_port = '80'
+
+        utils.execute(
+            'echo "catalog.RegionOne.identity.publicURL = http://%s:%s/keystone/v2.0" >> /etc/keystone/default_catalog.templates' % (
+            public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.compute.publicURL = http://%s:%s/compute/v1.1/\$(tenant_id)s" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.volume.publicURL = http://%s:%s/volume/v1/\$(tenant_id)s" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.ec2.publicURL = http://%s:%s/services/Cloud" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.image.publicURL = http://%s:%s/glance/v1" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+
         utils.execute("service keystone restart")
         utils.execute("keystone-manage db_sync")
         # Configure service users/roles
@@ -330,10 +374,12 @@ class KeystoneConfig(Config):
         member_role = self.get_id(stdout)
         # StackOps Portal role
         (stdout, stderr) = utils.execute(
-            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_ADMIN' % (self.endpoint, self.admin_password))
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_ADMIN' % (
+                self.endpoint, self.admin_password))
         portal_admin_role = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
-            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_USER' % (self.endpoint, self.admin_password))
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_USER' % (
+                self.endpoint, self.admin_password))
         portal_user_role = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
@@ -951,7 +997,8 @@ class NovaNetworkConfig(Config):
                 utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (
                     self.nova_host, self.nova_port, self.nova_username, self.nova_password, ip))
         else:
-            utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
+            utils.execute(
+                'nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
 
     def _addFirewallRules(self, publicip, bridgeif):
         utils.execute("service iptables-persistent flush", check_exit_code=False)
@@ -993,14 +1040,16 @@ class NovaNetworkConfig(Config):
         if self.network_manager == 'nova.network.manager.VlanManager':
             utils.execute(
                 'nova-manage --flagfile=%s network create service %s %s %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.vlanstart, self.bridged_interface,
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size,
+                    self.vlanstart, self.bridged_interface,
                     self.dns1,
                     self.dns2))
             bridgeif = 'br%s' % self.vlanstart
         else:
             utils.execute(
                 'nova-manage  --flagfile=%s network create service %s %s %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.bridge, self.bridged_interface,
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size,
+                    self.bridge, self.bridged_interface,
                     self.dns1, self.dns2))
             bridgeif = 'br100'
         return bridgeif
@@ -1102,7 +1151,7 @@ class NovaComputeConfig(Config):
 
         # NOVA-VNCPROXY configruration
         self.public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip', '')
-        if len(self.public_ip)>0:
+        if len(self.public_ip) > 0:
             self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.public_ip)
         else:
             self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
@@ -1421,7 +1470,17 @@ class HorizonConfig(Config):
         utils.execute('echo "" > /etc/apache2/sites-available/default', check_exit_code=False)
         utils.execute('echo "" > /etc/apache2/sites-available/default-ssl', check_exit_code=False)
         self.installPackagesCommon()
-        self._installDeb('libapache2-mod-wsgi openstack-dashboard', interactive=False)
+        self._installDeb('libapache2-mod-wsgi', interactive=False)
+        self._installDeb('openstack-dashboard --no-install-recommends', interactive=False)
+        self._installDeb('openstack-dashboard-stackops-theme', interactive=False)
+        css_path = "/usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/css"
+        utils.execute(
+            "cp -f %s/stackops.css %s/style.css" % (css_path, css_path)
+            , check_exit_code=False)
+        img_path = "/usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/img"
+        utils.execute(
+            "cp -f %s/favicon-stackops.ico %s/favicon.ico" % (img_path, img_path)
+            , check_exit_code=False)
         return
 
 

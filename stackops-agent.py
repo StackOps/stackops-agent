@@ -39,8 +39,8 @@ import utils
 
 import status
 
-_target = 'installer.stackops.org'
-#_target = 'installer.qa.stackops.org/stackops'
+#_target = 'installer.stackops.org'
+_target = 'installer.qa.stackops.org/stackops'
 _port = 8888
 _status_file = '/etc/nova/CONFIG_STATUS'
 

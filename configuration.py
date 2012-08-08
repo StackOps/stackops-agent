@@ -1898,6 +1898,101 @@ class QEMUVolumeConfig(Config):
         self._installDeb('nfs-common')
 
 
+class PortalConfig(Config):
+    def __init__(self):
+        """
+        Constructor
+        """
+
+        # Write the parameters (if possible) from the xml file
+
+    def write(self, xmldoc):
+        # Basic Portal
+        # PORTAL database configuration
+        self.portal_username = self._filler.getPropertyValue(xmldoc, 'portal_database', 'username', 'portal')
+        self.portal_password = self._filler.getPropertyValue(xmldoc, 'portal_database', 'password', 'portal')
+        self.portal_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'schema', 'portal')
+        self.portal_host = self._filler.getPropertyValue(xmldoc, 'portal_database', 'host', '127.0.0.1')
+        self.portal_port = self._filler.getPropertyValue(xmldoc, 'portal_database', 'port', '3306')
+
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
+        # KEYSTONE Service configuration
+        self.keystone_host = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_host', self.ec2_hostname)
+        self.keystone_user_port = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_user_port', '5000')
+        self.keystone_admin_port = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_admin_port', '32357')
+        self.endpoint = 'http://%s:%s/v2.0' % (self.keystone_host, self.keystone_admin_port)
+
+        # Keystone admin password
+        self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+        return
+
+    def _configurePortal(self):
+        # Do nothing (security here????)
+        # Database config
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "CREATE TABLE PORTAL_SETTINGS (ID bigint(20) NOT NULL AUTO_INCREMENT, PROPERTY_KEE varchar(255) NOT NULL, PROPERTY_VALUE varchar(255) NOT NULL, PRIMARY KEY (ID))"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "CREATE TABLE PORTAL_SYSTEM_CHECK (ID bigint(20) NOT NULL AUTO_INCREMENT,CHECK_NAME varchar(255) NOT NULL,CHECKER_CLASS varchar(255) NOT NULL,SYSTEM_NAME varchar(255) NOT NULL,PRIMARY KEY (ID))"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SYSTEM_CHECK values (1, 'Identity service check', 'com.stackops.portal.service.checks.KeystoneBuiltinCheck', 'Keystone')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (2, 'identity.admin.token', '%s')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.admin_password))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (3, 'auth.username', 'portal')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (4, 'auth.password', '%s')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.admin_password))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (5, 'identity.endpoint.publicURL', 'http://%s:35357/v2.0')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (6, 'identity.endpoint.adminURL', 'http://%s:35357/v2.0')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (7, 'check.identity.endpoint', 'http://%s:35357');"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+
+        # JVM configuration
+        utils.execute('sed -i /JAVA_OPTS/d /etc/default/tomcat7')
+        utils.execute('''echo 'JAVA_OPTS="-Djava.awt.headless=true -Xmx768m -XX:+UseConcMarkSweepGC"' >> /etc/default/tomcat7''')
+
+        utils.execute('service tomcat7 stop', check_exit_code=False)
+        utils.execute('service tomcat7 start')
+        return
+
+
+    def install(self, hostname):
+        """
+        Install all stuff needed to run Portal for Nova
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configurePortal()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def uninstall(self, hostname):
+        """
+        Portal uninstall process
+        """
+        utils.execute("apt-get -y --purge remove openjdk-7-jdk tomcat7", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
+        return
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('openjdk-7-jdk tomcat7', interactive=False)
+        return
+
 class OSConfigurator(object):
     '''
     classdocs
@@ -1916,6 +2011,7 @@ class OSConfigurator(object):
     _novaVolumeLinuxLVMConfig = NovaVolumeLinuxLVMConfig()
     _nexentaVolumeConfig = NexentaVolumeConfig()
     _qemuVolumeConfig = QEMUVolumeConfig()
+    _portalConfig = PortalConfig()
     _filler = install.Filler();
 
     def __init__(self):
@@ -1923,7 +2019,7 @@ class OSConfigurator(object):
         Constructor
         '''
 
-    def _configureLinkAggregation(self, management_network_bond, service_network_bond):
+    def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
         """Configure initial network link aggregation (NIC bonding)"""
 
         self._installDeb("ifenslave", interactive=False)
@@ -1935,10 +2031,13 @@ class OSConfigurator(object):
 
         # Write new configuration.
         interfaces_content = templates['interfaces']
+        aliases_content_tmp = ''
         if management_network_bond:
             interfaces_content += templates['iface_bonding'] % {'iface': management_network_bond, 'bond': 'bond0'}
+            aliases_content_tmp += 'alias bond0 bonding\n'
         if service_network_bond:
             interfaces_content += templates['iface_bonding'] % {'iface': service_network_bond, 'bond': 'bond1'}
+            aliases_content_tmp += 'alias bond1 bonding\n'
         with open('/etc/network/interfaces', 'w') as f:
             f.write(interfaces_content)
         if os.path.exists('/etc/modprobe.d/aliases.conf'):
@@ -1949,7 +2048,7 @@ class OSConfigurator(object):
             aliases_content = ''.join(aliases_content)
         else:
             aliases_content = ''
-        aliases_content += 'alias bond0 bonding\nalias bond1 bonding\noptions bonding mode=1 miimon=100 max_bonds=2'
+        aliases_content += aliases_content_tmp + 'options bonding mode=1 miimon=100 max_bonds=2'
         with open('/etc/modprobe.d/aliases.conf', 'w') as f:
             f.write(aliases_content)
 
@@ -2022,22 +2121,20 @@ class OSConfigurator(object):
                 f.write('# Server configuration\n')
                 f.write('LoadPlugin "rrdtool"\n')
                 f.write('\n')
-
             f.write('# Client configuration\n')
-            f.write('LoadPlugin "interface"\n')
-            f.write('LoadPlugin "cpu"\n')
-            f.write('LoadPlugin "memory"\n')
-            f.write('LoadPlugin "df"\n')
-            f.write('LoadPlugin "disk"\n')
-            f.write('LoadPlugin "vmem"\n')
-            f.write('LoadPlugin "swap"\n')
+#            f.write('LoadPlugin "interface"\n')
+#            f.write('LoadPlugin "cpu"\n')
+#            f.write('LoadPlugin "memory"\n')
+#            f.write('LoadPlugin "df"\n')
+#            f.write('LoadPlugin "disk"\n')
+#            f.write('LoadPlugin "vmem"\n')
+#            f.write('LoadPlugin "swap"\n')
             if configType & 8 == 8:
                 f.write('# compute node specific\n')
                 f.write('LoadPlugin "libvirt"\n')
-            if configType & 2 == 2:
-                f.write('# network node specific\n')
-                f.write('LoadPlugin "iptables"\n')
-
+#            if configType & 2 == 2:
+#                f.write('# network node specific\n')
+#                f.write('LoadPlugin "iptables"\n')
             f.write('\n')
             f.write('<Plugin "network">\n')
             if configType & 1 == 1:
@@ -2052,10 +2149,10 @@ class OSConfigurator(object):
                 f.write('</Plugin>\n')
                 f.write('\n')
 
-            f.write('<Plugin "interface">\n')
-            f.write('  Interface "lo"\n')
-            f.write('  IgnoreSelected true\n')
-            f.write('</Plugin>\n')
+#            f.write('<Plugin "interface">\n')
+#            f.write('  Interface "lo"\n')
+#            f.write('  IgnoreSelected true\n')
+#            f.write('</Plugin>\n')
 
             if (configType == 8) or (configType == 15):
                 f.write('<Plugin "libvirt">\n')
@@ -2143,9 +2240,15 @@ class OSConfigurator(object):
 
     def _configureCollectdAgent(self, collectd_listener, component):
         if collectd_listener is None: # Only once...
+            self._installDeb('collectd-core',interactive=False)
             collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
                 'localhost')
-            # Is a Controller?
+            try:
+                if not os.path.exists('/var/lib/collectd/rrd'):
+                    utils.execute('mkdir /var/lib/collectd/rrd', check_exit_code=False)
+                utils.execute('ln -s /var/lib/collectd/rrd /var/www/rrd', check_exit_code=False)
+            except Exception:
+                raise Exception("Cannot create symbolic link to rrd folder")
         return collectd_listener
 
     def importConfiguration(self, xml):
@@ -2219,6 +2322,13 @@ class OSConfigurator(object):
                         result = self._horizonConfig.install(hostname)
                         if len(result) > 0: return result
 
+                    # Configure Portal
+                    use_portal = self._filler.getPropertyValue(component, 'portal', 'enabled', 'true') == 'true'
+                    if use_portal:
+                        self._portalConfig.write(component)
+                        result = self._portalConfig.install(hostname)
+                        if len(result) > 0: return result
+
                     # If we have to use Nexenta, install nova-volume for nexenta here
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',
                         'false') == 'true'
@@ -2235,6 +2345,7 @@ class OSConfigurator(object):
                         # Is a Compute?
                 if component.get_name() == 'compute':
                     configType |= 8
+                    self._configureLinkAggregation(management_network_bond=None,service_network_bond=None)
                     self._novaComputeConfig.write(component)
                     result = self._novaComputeConfig.install(hostname)
                     if len(result) > 0: return result
@@ -2255,18 +2366,16 @@ class OSConfigurator(object):
                         self._novaVolumeLinuxLVMConfig.write(component)
                         result = self._novaVolumeLinuxLVMConfig.install(hostname)
                         if len(result) > 0: return result
-                        # Add the rest of the components here...
-                        #
-                        #
-                        #
-                        # configType = 15, single node
-                        # configType = 7, dual node controller
-                        # configType = 1, 2, 4 multinode
-                        # configType = 8 dual o multinode (compute node)
-
-                        # Deprecated.
-                        #                    self._createCollectdConfigFile(configType,collectd_listener)
-                        #                    utils.execute('service collectd restart')
+# Add the rest of the components here...
+#
+#
+#
+# configType = 15, single node
+# configType = 7, dual node controller
+# configType = 1, 2, 4 multinode
+# configType = 8 dual o multinode (compute node)
+                self._createCollectdConfigFile(configType,collectd_listener)
+                utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'

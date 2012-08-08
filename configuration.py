@@ -1238,7 +1238,7 @@ class NovaComputeConfig(Config):
                       'novncproxy_base_url': '%s://%s:%s/vnc_auto.html' % (
                           self.vncproxy_type, self.vncproxy_host, self.vncproxy_port),
                       'novnc_enable': 'true',
-                      'vncserver_proxyclient_address': '127.0.0.1',
+                      'vncserver_proxyclient_address': self.my_ip,
                       'vncserver_listen': '0.0.0.0',
                       # NOVA-COMPUTE SPECIFIC
                       'auth_strategy': 'keystone',

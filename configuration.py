@@ -660,7 +660,10 @@ class NovaApiConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-API SPECIFIC
+                      'enabled_apis': 'ec2,osapi_compute,osapi_volume,metadata',
                       'auth_strategy': 'keystone',
                       'ec2_host': self.ec2_hostname,
                       'ec2_dmz_host': self.ec2_dmz,
@@ -830,6 +833,8 @@ class NovaSchedulerConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-SCHEDULER SPECIFIC
                       'scheduler_driver': self.scheduler_driver,
                       'max_cores': self.scheduler_max_cores,
@@ -969,6 +974,8 @@ class NovaNetworkConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-NETWORK SPECIFIC
                       'dhcpbridge': self.dhcpbridge,
                       'dhcpbridge_flagfile': self.dhcpbridge_flagfile,
@@ -1234,6 +1241,8 @@ class NovaComputeConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VNCPROXY SPECIFIC
                       'novncproxy_base_url': '%s://%s:%s/vnc_auto.html' % (
                           self.vncproxy_type, self.vncproxy_host, self.vncproxy_port),
@@ -1542,6 +1551,8 @@ class NovaVncProxyConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VNCPROXY SPECIFIC
                       'novncproxy_base_url': '%s://%s:%s/vnc_auto.html' % (
                           self.vncproxy_type, self.vncproxy_host, self.vncproxy_port)}
@@ -1644,8 +1655,10 @@ class NovaVolumeLinuxLVMConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
-                      'iscsi_helper': 'tgtadm',
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VOLUME specific
+                      'iscsi_helper': 'tgtadm',
                       'use_local_volumes': self.use_local_volumes}
 
         self._writeFile(self._filename, parameters)
@@ -1752,6 +1765,8 @@ class NexentaVolumeConfig(Config):
                       'use_project_ca': self.use_project_ca,
                       'iscsi_helper': 'tgtadm',
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       'use_local_volumes': self.use_local_volumes,
                       'volume_driver': self.volume_driver,
                       'volume_group': self.volume_group,
@@ -1853,6 +1868,8 @@ class QEMUVolumeConfig(Config):
                       'rabbit_host': self.rabbit_host,
                       'use_project_ca': self.use_project_ca,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       'volume_driver': self.volume_driver,
                       'volumes_path': self.volumes_path,
                       'host': self.nova_volume_host}

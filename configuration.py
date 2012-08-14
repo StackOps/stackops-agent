@@ -2139,19 +2139,9 @@ class OSConfigurator(object):
                 f.write('LoadPlugin "rrdtool"\n')
                 f.write('\n')
             f.write('# Client configuration\n')
-#            f.write('LoadPlugin "interface"\n')
-#            f.write('LoadPlugin "cpu"\n')
-#            f.write('LoadPlugin "memory"\n')
-#            f.write('LoadPlugin "df"\n')
-#            f.write('LoadPlugin "disk"\n')
-#            f.write('LoadPlugin "vmem"\n')
-#            f.write('LoadPlugin "swap"\n')
             if configType & 8 == 8:
                 f.write('# compute node specific\n')
                 f.write('LoadPlugin "libvirt"\n')
-#            if configType & 2 == 2:
-#                f.write('# network node specific\n')
-#                f.write('LoadPlugin "iptables"\n')
             f.write('\n')
             f.write('<Plugin "network">\n')
             if configType & 1 == 1:
@@ -2159,24 +2149,15 @@ class OSConfigurator(object):
             f.write('  Server "' + controllerIP + '"\n')
             f.write('</Plugin>\n')
             f.write('\n')
-
             if configType & 1 == 1:
                 f.write('<Plugin rrdtool>\n')
                 f.write('  DataDir "/var/lib/collectd/rrd"\n')
                 f.write('</Plugin>\n')
                 f.write('\n')
-
-#            f.write('<Plugin "interface">\n')
-#            f.write('  Interface "lo"\n')
-#            f.write('  IgnoreSelected true\n')
-#            f.write('</Plugin>\n')
-
-            if (configType == 8) or (configType == 15):
+            if configType & 8 == 8:
                 f.write('<Plugin "libvirt">\n')
-                f.write('  Connection "qemu:///system"\n')
-                f.write('  HostnameFormat "name"\n')
+                f.write('  HostnameFormat uuid\n')
                 f.write('</Plugin>\n')
-
             f.close()
         except Exception:
             print "Error writing file. " + path + '/' + filename

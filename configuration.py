@@ -985,7 +985,8 @@ class NovaNetworkConfig(Config):
                       'flat_network_dhcp_start': self.flat_network_dhcp_start,
                       'force_dhcp_release': 'true',
                       'fixed_range': self.fixed_range,
-                      'override_bridge_interface': self.flat_interface}
+#                      'override_bridge_interface': self.flat_interface}
+                      'flat_interface': self.flat_interface}
 
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-network stop", check_exit_code=False)
@@ -1175,12 +1176,6 @@ class NovaComputeConfig(Config):
         self.storage_hostname = self._filler.getPropertyValue(xmldoc, 'iscsi', 'storage_hostname', 'nova-volume')
 
         # Network interfaces
-        self.iface_list = self._operatingsystem.getNetworkConfiguration()
-        self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
-        for iface in self.iface_list:
-            if iface['name'] == self.management_interface:
-                self.my_ip = iface['address']
-
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface', 'eth1')
 
         # Connect to shared filesystem
@@ -1329,9 +1324,9 @@ class NovaComputeConfig(Config):
         utils.execute("sysctl -p /etc/sysctl.conf")
 
         # modify libvirt template to enable hugepages
-        utils.execute("sed -i '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
+        utils.execute("sed -i '/hugepages/d' /usr/share/pyshared/nova/virt/libvirt.xml.template")
         utils.execute(
-            "sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
+            "sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /usr/share/pyshared/nova/virt/libvirt.xml.template")
 
     def _disableSwap(self):
         utils.execute('sed -i /swap/d /etc/fstab')
@@ -2039,12 +2034,12 @@ class OSConfigurator(object):
     def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
         """Configure initial network link aggregation (NIC bonding)"""
 
-        self._installDeb("ifenslave", interactive=False)
-
         # Test if management network interdfce is dhcp configured.
         interfaces_content = open('/etc/network/interfaces').read()
         if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I | re.M):
             return
+
+        self._installDeb("ifenslave", interactive=False)
 
         # Write new configuration.
         interfaces_content = templates['interfaces']
@@ -2241,12 +2236,13 @@ class OSConfigurator(object):
             self._installDeb('collectd-core',interactive=False)
             collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
                 'localhost')
-            try:
-                if not os.path.exists('/var/lib/collectd/rrd'):
-                    utils.execute('mkdir /var/lib/collectd/rrd', check_exit_code=False)
-                utils.execute('ln -s /var/lib/collectd/rrd /var/www/rrd', check_exit_code=False)
-            except Exception:
-                raise Exception("Cannot create symbolic link to rrd folder")
+            if component.get_name()=='controller':
+                try:
+                    if not os.path.exists('/var/lib/collectd/rrd'):
+                        utils.execute('mkdir /var/lib/collectd/rrd', check_exit_code=False)
+                    utils.execute('ln -s /var/lib/collectd/rrd /var/www/rrd', check_exit_code=False)
+                except Exception:
+                    raise Exception("Cannot create symbolic link to rrd folder")
         return collectd_listener
 
     def importConfiguration(self, xml):
@@ -2343,7 +2339,10 @@ class OSConfigurator(object):
                         # Is a Compute?
                 if component.get_name() == 'compute':
                     configType |= 8
-                    self._configureLinkAggregation(management_network_bond=None,service_network_bond=None)
+                        # Network interfaces
+                    management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
+                    flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
+                    self._configureLinkAggregation(management_network_bond=management_interface,service_network_bond=flat_interface)
                     self._novaComputeConfig.write(component)
                     result = self._novaComputeConfig.install(hostname)
                     if len(result) > 0: return result
@@ -2383,22 +2382,22 @@ templates = {
 
     'interfaces': """
 auto eth0
-allow-bond0 eth0
 iface eth0 inet manual
     bond-master bond0
 
 auto eth1
-allow-bond1 eth1
 iface eth1 inet manual
     bond-master bond1
 
 auto bond0
 iface bond0 inet dhcp
-        bond-mode 1
-        miimon 100
+    bond-slaves none
+    bond-mode 1
+    miimon 100
 
 auto bond1
 iface bond1 inet manual
+    bond-slaves none
     bond-mode 1
     miimon 100
     post-up ifconfig $IFACE up
@@ -2407,7 +2406,6 @@ iface bond1 inet manual
 
     'iface_bonding': """
 auto %(iface)s
-allow-%(bond)s %(iface)s
 iface %(iface)s inet manual
     bond-master %(bond)s
     """,

@@ -496,12 +496,14 @@ class GlanceConfig(Config):
         utils.execute('sed -i "/flavor = keystone/d" /etc/glance/glance-api.conf')
         utils.execute('echo "flavor = keystone" >> /etc/glance/glance-api.conf')
 
-        utils.execute("service glance-api stop && service glance-registry stop")
+        utils.execute("service glance-api stop && service glance-registry stop", check_exit_code=False)
 
-        utils.execute('rm -fr /var/lib/glance/images', check_exit_code=False)
-        utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
-        utils.execute('chown glance:glance -R /var/lib/glance/images')
+        if self.glance_mount_type == 'local':
+            utils.execute('rm -fr /var/lib/glance/images', check_exit_code=False)
+            utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
+            utils.execute('chown glance:glance -R /var/lib/glance/images')
         if self.glance_mount_type == 'nfs':
+            utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0' % (
                 self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
@@ -1287,22 +1289,31 @@ class NovaComputeConfig(Config):
 
     def _configureNFS(self):
         # configure NFS mount
+        if os.path.ismount(self.instances_path):
+            utils.execute('umount %s' % self.instances_path)
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.instances_path, self.mount_parameters)
-        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
-        utils.execute('mount -a')
+        try:
+            utils.execute('mount -a')
+        except Exception as e:
+            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            raise e
 
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
-        utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0' % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
-        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
-        utils.execute('mount -a')
+        try:
+            utils.execute('mount -a')
+        except Exception as e:
+            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            raise e
 
     def _configureNovaVolumeHost(self):
         # add to /etc/hosts file the hostname of nova-volume
@@ -1350,6 +1361,7 @@ class NovaComputeConfig(Config):
         utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
         utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
         utils.execute('''sed -i 's/#auth_tcp = "sasl"/auth_tcp = "none"/g' /etc/libvirt/libvirtd.conf''')
+        utils.execute('''sed -i 's/libvirtd_opts="-d"/libvirtd_opts="-d -l"/g' /etc/default/libvirt-bin''')
         utils.execute("service libvirt-bin start")
 
     def _configureGlusterFS(self):
@@ -1413,6 +1425,8 @@ class NovaComputeConfig(Config):
         self._installDeb('libvirt-bin nova-compute', interactive=False)
         if self.use_iscsi:
             self._installDeb('open-iscsi open-iscsi-utils', interactive=False)
+        if self.instances_filesystem_mount_type == 'nfs':
+            self._installDeb('nfs-common')
         return
 
 

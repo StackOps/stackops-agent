@@ -87,3 +87,14 @@ def bits2netmask(bits):
     if len(parts) < 4:
         parts.extend(['0']*(4-len(parts)))
     return '.'.join(parts)
+
+def singleton(cls):
+    """
+    Singleton helper function
+    """
+    instances = {}
+    def getinstance():
+        if cls not in instances:
+            instances[cls] = cls()
+        return instances[cls]
+    return getinstance

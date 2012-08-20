@@ -22,6 +22,7 @@ import urllib2
 import utils
 
 from twisted.python import log
+from configuration import ConfigFactory
 
 from install import Filler
 
@@ -40,21 +41,13 @@ class MySQLConfigTest(unittest.TestCase):
 	self._uninstallMySQLServer()
         pass
     def testInstall(self):
-        c =configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
     	self.assertTrue(result is None)
 
     def testConfigure(self):
-#        url = 'http://127.0.0.1:8888'
-#        user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
-#        values = {'sysinfo' : 'Michael Foord' }
-#        headers = { 'User-Agent' : user_agent }
-#        data = urllib.urlencode(values)
-#        req = urllib2.Request(url, data, headers)
-#        response = urllib2.urlopen(req)
-#        the_page = response.read()
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -76,6 +69,12 @@ class MySQLConfigTest(unittest.TestCase):
         c.keystone_schema = "keystone"
         c.keystone_drop_schema = True
 
+        # PORTAL database configuration
+        c.portal_username = "portal"
+        c.portal_password = "stackops"
+        c.portal_schema = "portal"
+        c.portal_drop_schema = True
+
         c._configureMySQL()
 
         (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.nova_schema))
@@ -84,24 +83,26 @@ class MySQLConfigTest(unittest.TestCase):
         self.assertTrue(c.glance_schema in stdout)
         (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.keystone_schema))
         self.assertTrue(c.keystone_schema in stdout)
+        (stdout, stderr) = utils.execute("""mysql -uroot -p%s -e 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = "%s";'""" % (c.mysql_root_password, c.portal_schema))
+        self.assertTrue(c.portal_schema in stdout)
 
 class RabbitMQConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         pass
     def tearDown(self):
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         pass
     def testInstall(self):
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
         self.assertTrue(result is None)
     def testConfigure(self):
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.installPackages()
         c._configureRabbitMQ()
         (stdout, stderr) = utils.execute("service rabbitmq-server status")
@@ -115,7 +116,7 @@ class KeystoneConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -137,23 +138,29 @@ class KeystoneConfigTest(unittest.TestCase):
         c.keystone_schema = "keystone"
         c.keystone_drop_schema = True
 
+        # PORTAL database configuration
+        c.portal_username = "portal"
+        c.portal_password = "stackops"
+        c.portal_schema = "portal"
+        c.portal_drop_schema = True
+
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.keystone_username = 'keystone'
         c.keystone_password = 'stackops'
         c.keystone_host = '127.0.0.1'
@@ -180,7 +187,7 @@ class GlanceConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -203,27 +210,27 @@ class GlanceConfigTest(unittest.TestCase):
         c.keystone_drop_schema = True
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = self.MOUNT_TYPE
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_username = 'glance'
         c.glance_password = 'stackops'
         c.glance_host = '127.0.0.1'
@@ -245,7 +252,7 @@ class NovaApiConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -276,31 +283,31 @@ class NovaApiConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -388,7 +395,7 @@ class NovaVncProxyConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -419,14 +426,14 @@ class NovaVncProxyConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -500,26 +507,26 @@ class NovaVncProxyConfigTest(unittest.TestCase):
 
         c.installPackages()
         c._configureNovaApi()
-        c = configuration.NovaVncProxyConfig()
+        c = ConfigFactory().getConfig('nova.NovaVncProxyConfig')
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.NovaVncProxyConfig()
+        c =ConfigFactory().getConfig('nova.NovaVncProxyConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaVncProxyConfig()
+        c =ConfigFactory().getConfig('nova.NovaVncProxyConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -566,7 +573,7 @@ class NovaSchedulerConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -597,14 +604,14 @@ class NovaSchedulerConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -679,26 +686,26 @@ class NovaSchedulerConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaApi()
 
-        c = configuration.NovaSchedulerConfig()
+        c = ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.NovaSchedulerConfig()
+        c =ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaSchedulerConfig()
+        c =ConfigFactory().getConfig('nova.NovaSchedulerConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -746,7 +753,7 @@ class NovaVolumeLVMLinuxConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -777,14 +784,14 @@ class NovaVolumeLVMLinuxConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -859,26 +866,26 @@ class NovaVolumeLVMLinuxConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaApi()
 
-        c = configuration.NovaVolumeLinuxLVMConfig()
+        c = ConfigFactory().getConfig('nova.NovaVolumeLinuxLVMConfig')
         result = c.installPackages()
         pass
 
     def tearDown(self):
-        c =configuration.NovaVolumeLinuxLVMConfig()
+        c =ConfigFactory().getConfig('nova.NovaVolumeLinuxLVMConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaVolumeLinuxLVMConfig()
+        c =ConfigFactory().getConfig('nova.NovaVolumeLinuxLVMConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -924,7 +931,7 @@ class NovaComputeConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -955,14 +962,14 @@ class NovaComputeConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1037,7 +1044,7 @@ class NovaComputeConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaApi()
 
-        c = configuration.NovaSchedulerConfig()
+        c = ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         result = c.installPackages()
 
         # Basic common parameters
@@ -1076,24 +1083,24 @@ class NovaComputeConfigTest(unittest.TestCase):
         pass
 
     def tearDown(self):
-        c =configuration.NovaComputeConfig()
+        c =ConfigFactory().getConfig('nova.NovaComputeConfig')
         c.use_iscsi = False
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaSchedulerConfig()
+        c =ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaComputeConfig()
+        c =ConfigFactory().getConfig('nova.NovaComputeConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1184,7 +1191,7 @@ class NovaNetworkConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -1215,14 +1222,14 @@ class NovaNetworkConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1297,7 +1304,7 @@ class NovaNetworkConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaApi()
 
-        c = configuration.NovaSchedulerConfig()
+        c = ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         # Basic common parameters
         c.verbose = 'true'
         c.nodaemon = 'true'
@@ -1333,7 +1340,7 @@ class NovaNetworkConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaScheduler()
 
-        c = configuration.NovaNetworkConfig()
+        c = ConfigFactory().getConfig('nova.NovaNetworkConfig')
         c.public_ip = '192.168.10.64'
         c.public_ip_mask = '255.255.255.255'
         c.public_ip_gateway = '192.168.10.1'
@@ -1342,23 +1349,23 @@ class NovaNetworkConfigTest(unittest.TestCase):
         pass
 
     def tearDown(self):
-        c =configuration.NovaNetworkConfig()
+        c =ConfigFactory().getConfig('nova.NovaNetworkConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaSchedulerConfig()
+        c =ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.NovaNetworkConfig()
+        c =ConfigFactory().getConfig('nova.NovaNetworkConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1436,7 +1443,7 @@ class HorizonConfigTest(unittest.TestCase):
 
     def setUp(self):
         log.startLogging(sys.stdout)
-        c = configuration.MySQLMasterConfig()
+        c = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
         c.mysql_root_password = 'stackops'
         result = c.installPackages()
 
@@ -1467,9 +1474,9 @@ class HorizonConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
 
         c._configureMySQL()
-        c = configuration.RabbitMQMasterConfig()
+        c = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         result = c.installPackages()
-        c = configuration.KeystoneConfig()
+        c = ConfigFactory().getConfig('keystone.KeystoneConfig')
         result = c.installPackages()
         c.keystone_username = 'keystone'
         c.keystone_password = 'stackops'
@@ -1483,7 +1490,7 @@ class HorizonConfigTest(unittest.TestCase):
         c.default_tenant = ''
         c.endpoint = 'http://localhost:35357/v2.0'
         c._configureKeystone()
-        c = configuration.GlanceConfig()
+        c = ConfigFactory().getConfig('glance.GlanceConfig')
         c.glance_mount_type = 'local'
         result = c.installPackages()
         c.glance_username = 'glance'
@@ -1495,7 +1502,7 @@ class HorizonConfigTest(unittest.TestCase):
         c.glance_mount_type = 'local'
         c.admin_password = 'password'
         c._configureGlance()
-        c = configuration.NovaApiConfig()
+        c = ConfigFactory().getConfig('nova.NovaApiConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1572,7 +1579,7 @@ class HorizonConfigTest(unittest.TestCase):
         result = c.installPackages()
         c.install('nova-controller')
 
-        c =configuration.NovaVncProxyConfig()
+        c =ConfigFactory().getConfig('nova.NovaVncProxyConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1608,7 +1615,7 @@ class HorizonConfigTest(unittest.TestCase):
         c.installPackages()
         c._configureNovaVncProxy()
 
-        c = configuration.NovaSchedulerConfig()
+        c = ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         # Basic common parameters
         c.verbose = 'true'
         c.nodaemon = 'true'
@@ -1644,7 +1651,7 @@ class HorizonConfigTest(unittest.TestCase):
         result = c.installPackages()
         c._configureNovaScheduler()
 
-        c = configuration.NovaVolumeLinuxLVMConfig()
+        c = ConfigFactory().getConfig('nova.NovaVolumeLinuxLVMConfig')
         # Basic common parameters
         c.verbose = 'true'
         c.nodaemon = 'true'
@@ -1678,7 +1685,7 @@ class HorizonConfigTest(unittest.TestCase):
         result = c.installPackages()
         c.install('nova-controller')
 
-        c = configuration.NovaNetworkConfig()
+        c = ConfigFactory().getConfig('nova.NovaNetworkConfig')
         c.public_ip = '192.168.10.64'
         c.public_ip_mask = '255.255.255.255'
         c.public_ip_gateway = '192.168.10.1'
@@ -1750,7 +1757,7 @@ class HorizonConfigTest(unittest.TestCase):
 
         result = c.install(hostname='nova-controller')
 
-        c =configuration.NovaComputeConfig()
+        c =ConfigFactory().getConfig('nova.NovaComputeConfig')
 
         # Basic common parameters
         c.verbose = 'true'
@@ -1835,30 +1842,30 @@ class HorizonConfigTest(unittest.TestCase):
     def tearDown(self):
         c =configuration.HorizonConfig()
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaComputeConfig()
+        c =ConfigFactory().getConfig('nova.NovaComputeConfig')
         c.use_iscsi = True
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaNetworkConfig()
+        c =ConfigFactory().getConfig('nova.NovaNetworkConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaSchedulerConfig()
+        c =ConfigFactory().getConfig('nova.NovaSchedulerConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaVolumeLinuxLVMConfig()
+        c =ConfigFactory().getConfig('nova.NovaVolumeLinuxLVMConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaVncProxyConfig()
+        c =ConfigFactory().getConfig('nova.NovaVncProxyConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.NovaApiConfig()
+        c =ConfigFactory().getConfig('nova.NovaApiConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.GlanceConfig()
+        c =ConfigFactory().getConfig('glance.GlanceConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.KeystoneConfig()
+        c =ConfigFactory().getConfig('keystone.KeystoneConfig')
         c.uninstall(hostname='nova-controller')
-        c =configuration.RabbitMQMasterConfig()
+        c =ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
         c.uninstall(hostname='nova-controller')
         self._uninstallMySQLServer()
         pass
 
     def testConfigure(self):
-        c =configuration.HorizonConfig()
+        c = ConfigFactory().getConfig('nova.HorizonConfig')
         result = c.install(hostname='nova-controller')
         print result
         self.assertFalse(len(result)>0)

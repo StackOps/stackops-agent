@@ -91,7 +91,6 @@ class GlanceConfig(Config):
             utils.execute('chown glance:glance -R /var/lib/glance/images')
         if self.glance_mount_type == 'nfs':
             utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
-            utils.execute('chown glance:glance -R /var/lib/glance/images')
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0' % (
                 self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
@@ -99,6 +98,7 @@ class GlanceConfig(Config):
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
+            utils.execute('chown glance:glance -R /var/lib/glance/images')
 
         utils.execute("service glance-api start && service glance-registry start")
 

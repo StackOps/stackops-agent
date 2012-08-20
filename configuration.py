@@ -131,6 +131,13 @@ class MySQLMasterConfig(Config):
         self.keystone_drop_schema = self._filler.getPropertyValue(xmldoc, 'keystone_database', 'dropschema',
             'true') == 'true'
 
+        # PORTAL database configuration
+        self.portal_username = self._filler.getPropertyValue(xmldoc, 'portal_database', 'username', 'portal')
+        self.portal_password = self._filler.getPropertyValue(xmldoc, 'portal_database', 'password', 'portal')
+        self.portal_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'schema', 'portal')
+        self.portal_drop_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'dropschema',
+            'true') == 'true'
+
         return
 
     def _configureMySQL(self):
@@ -145,13 +152,23 @@ class MySQLMasterConfig(Config):
         if self.keystone_drop_schema:
             utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS keystone;"' % self.mysql_root_password,
                 check_exit_code=False)
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.nova_schema))
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.glance_schema))
-        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s;"' % (self.mysql_root_password, self.keystone_schema))
+        if self.portal_drop_schema:
+            utils.execute('mysql -uroot -p%s -e "DROP DATABASE IF EXISTS portal;"' % self.mysql_root_password,
+                check_exit_code=False)
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.nova_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.glance_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.keystone_schema))
+        utils.execute('mysql -uroot -p%s -e "CREATE DATABASE %s default character set utf8;"' % (self.mysql_root_password, self.portal_schema))
 
+        utils.execute(
+            '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
+                self.mysql_root_password, self.portal_schema, self.portal_username, self.portal_password))
+        utils.execute('''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%' IDENTIFIED BY '%s';"''' % (
+            self.mysql_root_password, self.portal_schema, self.portal_username, self.portal_password))
         if self.nova_username == 'root' and self.glance_username == 'root' and self.keystone_username == 'root':
             utils.execute(
-                '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' IDENTIFIED BY '%s';"''' % (self.mysql_root_password,self.mysql_root_password))
+                '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' IDENTIFIED BY '%s';"''' % (
+                    self.mysql_root_password, self.mysql_root_password))
         else:
             utils.execute(
                 '''mysql -uroot -p%s -e "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost' IDENTIFIED BY '%s';"''' % (
@@ -271,6 +288,7 @@ class KeystoneConfig(Config):
         self.default_username = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_username', '')
         self.default_tenant = self._filler.getPropertyValue(xmldoc, 'auth_users', 'default_tenant', '')
         self.endpoint = 'http://localhost:35357/v2.0'
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
         return
 
     def get_id(self, str):
@@ -284,6 +302,32 @@ class KeystoneConfig(Config):
             "sed -i 's#connection = sqlite:////var/lib/keystone/keystone.db#connection = %s#g' /etc/keystone/keystone.conf" % self.keystone_sql_connection)
         utils.execute(
             "sed -i 's#driver = keystone.catalog.backends.sql.Catalog#driver = keystone.catalog.backends.templated.TemplatedCatalog\\ntemplate_file = /etc/keystone/default_catalog.templates#g' /etc/keystone/keystone.conf")
+
+        utils.execute('sed -i /catalog.RegionOne.identity.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.compute.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.volume.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.ec2.publicURL/d /etc/keystone/default_catalog.templates')
+        utils.execute('sed -i /catalog.RegionOne.image.publicURL/d /etc/keystone/default_catalog.templates')
+
+        public_ip = self.ec2_hostname
+        public_port = '80'
+
+        utils.execute(
+            'echo "catalog.RegionOne.identity.publicURL = http://%s:%s/keystone/v2.0" >> /etc/keystone/default_catalog.templates' % (
+            public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.compute.publicURL = http://%s:%s/compute/v1.1/\$(tenant_id)s" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.volume.publicURL = http://%s:%s/volume/v1/\$(tenant_id)s" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.ec2.publicURL = http://%s:%s/services/Cloud" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+        utils.execute(
+            'echo "catalog.RegionOne.image.publicURL = http://%s:%s/glance/v1" >> /etc/keystone/default_catalog.templates' % (
+                public_ip, public_port))
+
         utils.execute("service keystone restart")
         utils.execute("keystone-manage db_sync")
         # Configure service users/roles
@@ -330,10 +374,12 @@ class KeystoneConfig(Config):
         member_role = self.get_id(stdout)
         # StackOps Portal role
         (stdout, stderr) = utils.execute(
-            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_ADMIN' % (self.endpoint, self.admin_password))
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_ADMIN' % (
+                self.endpoint, self.admin_password))
         portal_admin_role = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
-            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_USER' % (self.endpoint, self.admin_password))
+            'keystone --endpoint %s --token %s role-create --name=ROLE_PORTAL_USER' % (
+                self.endpoint, self.admin_password))
         portal_user_role = self.get_id(stdout)
         (stdout, stderr) = utils.execute(
             'keystone --endpoint %s --token %s user-role-add --user %s --role %s --tenant_id %s' % (
@@ -450,12 +496,14 @@ class GlanceConfig(Config):
         utils.execute('sed -i "/flavor = keystone/d" /etc/glance/glance-api.conf')
         utils.execute('echo "flavor = keystone" >> /etc/glance/glance-api.conf')
 
-        utils.execute("service glance-api stop && service glance-registry stop")
+        utils.execute("service glance-api stop && service glance-registry stop", check_exit_code=False)
 
-        utils.execute('rm -fr /var/lib/glance/images', check_exit_code=False)
-        utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
-        utils.execute('chown glance:glance -R /var/lib/glance/images')
+        if self.glance_mount_type == 'local':
+            utils.execute('rm -fr /var/lib/glance/images', check_exit_code=False)
+            utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
+            utils.execute('chown glance:glance -R /var/lib/glance/images')
         if self.glance_mount_type == 'nfs':
+            utils.execute('mkdir -p /var/lib/glance/images', check_exit_code=False)
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0' % (
                 self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
@@ -614,7 +662,10 @@ class NovaApiConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-API SPECIFIC
+                      'enabled_apis': 'ec2,osapi_compute,osapi_volume,metadata',
                       'auth_strategy': 'keystone',
                       'ec2_host': self.ec2_hostname,
                       'ec2_dmz_host': self.ec2_dmz,
@@ -784,6 +835,8 @@ class NovaSchedulerConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-SCHEDULER SPECIFIC
                       'scheduler_driver': self.scheduler_driver,
                       'max_cores': self.scheduler_max_cores,
@@ -923,6 +976,8 @@ class NovaNetworkConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-NETWORK SPECIFIC
                       'dhcpbridge': self.dhcpbridge,
                       'dhcpbridge_flagfile': self.dhcpbridge_flagfile,
@@ -932,7 +987,8 @@ class NovaNetworkConfig(Config):
                       'flat_network_dhcp_start': self.flat_network_dhcp_start,
                       'force_dhcp_release': 'true',
                       'fixed_range': self.fixed_range,
-                      'override_bridge_interface': self.flat_interface}
+#                      'override_bridge_interface': self.flat_interface}
+                      'flat_interface': self.flat_interface}
 
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-network stop", check_exit_code=False)
@@ -951,7 +1007,8 @@ class NovaNetworkConfig(Config):
                 utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (
                     self.nova_host, self.nova_port, self.nova_username, self.nova_password, ip))
         else:
-            utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
+            utils.execute(
+                'nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
 
     def _addFirewallRules(self, publicip, bridgeif):
         utils.execute("service iptables-persistent flush", check_exit_code=False)
@@ -993,14 +1050,16 @@ class NovaNetworkConfig(Config):
         if self.network_manager == 'nova.network.manager.VlanManager':
             utils.execute(
                 'nova-manage --flagfile=%s network create service %s %s %s --vlan=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.vlanstart, self.bridged_interface,
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size,
+                    self.vlanstart, self.bridged_interface,
                     self.dns1,
                     self.dns2))
             bridgeif = 'br%s' % self.vlanstart
         else:
             utils.execute(
                 'nova-manage  --flagfile=%s network create service %s %s %s --bridge=%s --bridge_interface=%s --dns1=%s --dns2=%s' % (
-                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size, self.bridge, self.bridged_interface,
+                    '/etc/nova/nova-network-stackops.conf', self.fixed_range, self.network_number, self.network_size,
+                    self.bridge, self.bridged_interface,
                     self.dns1, self.dns2))
             bridgeif = 'br100'
         return bridgeif
@@ -1102,7 +1161,7 @@ class NovaComputeConfig(Config):
 
         # NOVA-VNCPROXY configruration
         self.public_ip = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip', '')
-        if len(self.public_ip)>0:
+        if len(self.public_ip) > 0:
             self.vncproxy_host = self._filler.getPropertyValue(xmldoc, 'vncproxy', 'host', self.public_ip)
         else:
             self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
@@ -1119,12 +1178,6 @@ class NovaComputeConfig(Config):
         self.storage_hostname = self._filler.getPropertyValue(xmldoc, 'iscsi', 'storage_hostname', 'nova-volume')
 
         # Network interfaces
-        self.iface_list = self._operatingsystem.getNetworkConfiguration()
-        self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
-        for iface in self.iface_list:
-            if iface['name'] == self.management_interface:
-                self.my_ip = iface['address']
-
         self.flat_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'flat_interface', 'eth1')
 
         # Connect to shared filesystem
@@ -1185,11 +1238,13 @@ class NovaComputeConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VNCPROXY SPECIFIC
                       'novncproxy_base_url': '%s://%s:%s/vnc_auto.html' % (
                           self.vncproxy_type, self.vncproxy_host, self.vncproxy_port),
                       'novnc_enable': 'true',
-                      'vncserver_proxyclient_address': '127.0.0.1',
+                      'vncserver_proxyclient_address': self.my_ip,
                       'vncserver_listen': '0.0.0.0',
                       # NOVA-COMPUTE SPECIFIC
                       'auth_strategy': 'keystone',
@@ -1234,22 +1289,31 @@ class NovaComputeConfig(Config):
 
     def _configureNFS(self):
         # configure NFS mount
+        if os.path.ismount(self.instances_path):
+            utils.execute('umount %s' % self.instances_path)
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.instances_path, self.mount_parameters)
-        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
-        utils.execute('mount -a')
+        try:
+            utils.execute('mount -a')
+        except Exception as e:
+            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            raise e
 
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
-        utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0' % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
-        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
-        utils.execute('mount -a')
+        try:
+            utils.execute('mount -a')
+        except Exception as e:
+            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            raise e
 
     def _configureNovaVolumeHost(self):
         # add to /etc/hosts file the hostname of nova-volume
@@ -1271,9 +1335,9 @@ class NovaComputeConfig(Config):
         utils.execute("sysctl -p /etc/sysctl.conf")
 
         # modify libvirt template to enable hugepages
-        utils.execute("sed -i '/hugepages/d' /var/lib/nova/nova/virt/libvirt.xml.template")
+        utils.execute("sed -i '/hugepages/d' /usr/share/pyshared/nova/virt/libvirt.xml.template")
         utils.execute(
-            "sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /var/lib/nova/nova/virt/libvirt.xml.template")
+            "sed -i 's#</domain>#\\t<memoryBacking><hugepages/></memoryBacking>\\n</domain>#g' /usr/share/pyshared/nova/virt/libvirt.xml.template")
 
     def _disableSwap(self):
         utils.execute('sed -i /swap/d /etc/fstab')
@@ -1297,6 +1361,7 @@ class NovaComputeConfig(Config):
         utils.execute("sed -i 's/#listen_tls = 0/listen_tls = 0/g' /etc/libvirt/libvirtd.conf")
         utils.execute("sed -i 's/#listen_tcp = 1/listen_tcp = 1/g' /etc/libvirt/libvirtd.conf")
         utils.execute('''sed -i 's/#auth_tcp = "sasl"/auth_tcp = "none"/g' /etc/libvirt/libvirtd.conf''')
+        utils.execute('''sed -i 's/libvirtd_opts="-d"/libvirtd_opts="-d -l"/g' /etc/default/libvirt-bin''')
         utils.execute("service libvirt-bin start")
 
     def _configureGlusterFS(self):
@@ -1360,6 +1425,8 @@ class NovaComputeConfig(Config):
         self._installDeb('libvirt-bin nova-compute', interactive=False)
         if self.use_iscsi:
             self._installDeb('open-iscsi open-iscsi-utils', interactive=False)
+        if self.instances_filesystem_mount_type == 'nfs':
+            self._installDeb('nfs-common')
         return
 
 
@@ -1421,7 +1488,17 @@ class HorizonConfig(Config):
         utils.execute('echo "" > /etc/apache2/sites-available/default', check_exit_code=False)
         utils.execute('echo "" > /etc/apache2/sites-available/default-ssl', check_exit_code=False)
         self.installPackagesCommon()
-        self._installDeb('libapache2-mod-wsgi openstack-dashboard', interactive=False)
+        self._installDeb('libapache2-mod-wsgi', interactive=False)
+        self._installDeb('openstack-dashboard --no-install-recommends', interactive=False)
+        self._installDeb('openstack-dashboard-stackops-theme', interactive=False)
+        css_path = "/usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/css"
+        utils.execute(
+            "cp -f %s/stackops.css %s/style.css" % (css_path, css_path)
+            , check_exit_code=False)
+        img_path = "/usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/img"
+        utils.execute(
+            "cp -f %s/favicon-stackops.ico %s/favicon.ico" % (img_path, img_path)
+            , check_exit_code=False)
         return
 
 
@@ -1483,6 +1560,8 @@ class NovaVncProxyConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VNCPROXY SPECIFIC
                       'novncproxy_base_url': '%s://%s:%s/vnc_auto.html' % (
                           self.vncproxy_type, self.vncproxy_host, self.vncproxy_port)}
@@ -1585,8 +1664,10 @@ class NovaVolumeLinuxLVMConfig(Config):
                       'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'my_ip': self.my_ip,
-                      'iscsi_helper': 'tgtadm',
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       # NOVA-VOLUME specific
+                      'iscsi_helper': 'tgtadm',
                       'use_local_volumes': self.use_local_volumes}
 
         self._writeFile(self._filename, parameters)
@@ -1693,6 +1774,8 @@ class NexentaVolumeConfig(Config):
                       'use_project_ca': self.use_project_ca,
                       'iscsi_helper': 'tgtadm',
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       'use_local_volumes': self.use_local_volumes,
                       'volume_driver': self.volume_driver,
                       'volume_group': self.volume_group,
@@ -1794,6 +1877,8 @@ class QEMUVolumeConfig(Config):
                       'rabbit_host': self.rabbit_host,
                       'use_project_ca': self.use_project_ca,
                       'my_ip': self.my_ip,
+                      'notification_driver': 'nova.notifier.rabbit_notifier',
+                      'notification_topics': 'notifications,monitor',
                       'volume_driver': self.volume_driver,
                       'volumes_path': self.volumes_path,
                       'host': self.nova_volume_host}
@@ -1839,6 +1924,101 @@ class QEMUVolumeConfig(Config):
         self._installDeb('nfs-common')
 
 
+class PortalConfig(Config):
+    def __init__(self):
+        """
+        Constructor
+        """
+
+        # Write the parameters (if possible) from the xml file
+
+    def write(self, xmldoc):
+        # Basic Portal
+        # PORTAL database configuration
+        self.portal_username = self._filler.getPropertyValue(xmldoc, 'portal_database', 'username', 'portal')
+        self.portal_password = self._filler.getPropertyValue(xmldoc, 'portal_database', 'password', 'portal')
+        self.portal_schema = self._filler.getPropertyValue(xmldoc, 'portal_database', 'schema', 'portal')
+        self.portal_host = self._filler.getPropertyValue(xmldoc, 'portal_database', 'host', '127.0.0.1')
+        self.portal_port = self._filler.getPropertyValue(xmldoc, 'portal_database', 'port', '3306')
+
+        self.ec2_hostname = self._filler.getPropertyValue(xmldoc, 'ec2', 'hostname', '127.0.0.1')
+        # KEYSTONE Service configuration
+        self.keystone_host = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_host', self.ec2_hostname)
+        self.keystone_user_port = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_user_port', '5000')
+        self.keystone_admin_port = self._filler.getPropertyValue(xmldoc, 'auth_users', 'keystone_admin_port', '32357')
+        self.endpoint = 'http://%s:%s/v2.0' % (self.keystone_host, self.keystone_admin_port)
+
+        # Keystone admin password
+        self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+        return
+
+    def _configurePortal(self):
+        # Do nothing (security here????)
+        # Database config
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "CREATE TABLE PORTAL_SETTINGS (ID bigint(20) NOT NULL AUTO_INCREMENT, PROPERTY_KEE varchar(255) NOT NULL, PROPERTY_VALUE varchar(255) NOT NULL, PRIMARY KEY (ID))"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "CREATE TABLE PORTAL_SYSTEM_CHECK (ID bigint(20) NOT NULL AUTO_INCREMENT,CHECK_NAME varchar(255) NOT NULL,CHECKER_CLASS varchar(255) NOT NULL,SYSTEM_NAME varchar(255) NOT NULL,PRIMARY KEY (ID))"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SYSTEM_CHECK values (1, 'Identity service check', 'com.stackops.portal.service.checks.KeystoneBuiltinCheck', 'Keystone')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (2, 'identity.admin.token', '%s')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.admin_password))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (3, 'auth.username', 'portal')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (4, 'auth.password', '%s')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.admin_password))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (5, 'identity.endpoint.publicURL', 'http://%s:35357/v2.0')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (6, 'identity.endpoint.adminURL', 'http://%s:35357/v2.0')"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (7, 'check.identity.endpoint', 'http://%s:35357');"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+
+        # JVM configuration
+        utils.execute('sed -i /JAVA_OPTS/d /etc/default/tomcat7')
+        utils.execute('''echo 'JAVA_OPTS="-Djava.awt.headless=true -Xmx768m -XX:+UseConcMarkSweepGC"' >> /etc/default/tomcat7''')
+
+        utils.execute('service tomcat7 stop', check_exit_code=False)
+        utils.execute('service tomcat7 start')
+        return
+
+
+    def install(self, hostname):
+        """
+        Install all stuff needed to run Portal for Nova
+        """
+        result = ''
+        try:
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configurePortal()
+        except  Exception as inst:
+            result = 'ERROR: %s' % str(inst)
+        return result
+
+    def uninstall(self, hostname):
+        """
+        Portal uninstall process
+        """
+        utils.execute("apt-get -y --purge remove openjdk-7-jdk tomcat7", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
+        return
+
+    def installPackages(self):
+        self.installPackagesCommon()
+        self._installDeb('openjdk-7-jdk tomcat7', interactive=False)
+        return
+
 class OSConfigurator(object):
     '''
     classdocs
@@ -1857,6 +2037,7 @@ class OSConfigurator(object):
     _novaVolumeLinuxLVMConfig = NovaVolumeLinuxLVMConfig()
     _nexentaVolumeConfig = NexentaVolumeConfig()
     _qemuVolumeConfig = QEMUVolumeConfig()
+    _portalConfig = PortalConfig()
     _filler = install.Filler();
 
     def __init__(self):
@@ -1864,22 +2045,25 @@ class OSConfigurator(object):
         Constructor
         '''
 
-    def _configureLinkAggregation(self, management_network_bond, service_network_bond):
+    def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
         """Configure initial network link aggregation (NIC bonding)"""
-
-        self._installDeb("ifenslave", interactive=False)
 
         # Test if management network interdfce is dhcp configured.
         interfaces_content = open('/etc/network/interfaces').read()
         if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I | re.M):
             return
 
+        self._installDeb("ifenslave", interactive=False)
+
         # Write new configuration.
         interfaces_content = templates['interfaces']
+        aliases_content_tmp = ''
         if management_network_bond:
             interfaces_content += templates['iface_bonding'] % {'iface': management_network_bond, 'bond': 'bond0'}
+            aliases_content_tmp += 'alias bond0 bonding\n'
         if service_network_bond:
             interfaces_content += templates['iface_bonding'] % {'iface': service_network_bond, 'bond': 'bond1'}
+            aliases_content_tmp += 'alias bond1 bonding\n'
         with open('/etc/network/interfaces', 'w') as f:
             f.write(interfaces_content)
         if os.path.exists('/etc/modprobe.d/aliases.conf'):
@@ -1890,7 +2074,7 @@ class OSConfigurator(object):
             aliases_content = ''.join(aliases_content)
         else:
             aliases_content = ''
-        aliases_content += 'alias bond0 bonding\nalias bond1 bonding\noptions bonding mode=1 miimon=100 max_bonds=2'
+        aliases_content += aliases_content_tmp + 'options bonding mode=1 miimon=100 max_bonds=2'
         with open('/etc/modprobe.d/aliases.conf', 'w') as f:
             f.write(aliases_content)
 
@@ -1963,22 +2147,10 @@ class OSConfigurator(object):
                 f.write('# Server configuration\n')
                 f.write('LoadPlugin "rrdtool"\n')
                 f.write('\n')
-
             f.write('# Client configuration\n')
-            f.write('LoadPlugin "interface"\n')
-            f.write('LoadPlugin "cpu"\n')
-            f.write('LoadPlugin "memory"\n')
-            f.write('LoadPlugin "df"\n')
-            f.write('LoadPlugin "disk"\n')
-            f.write('LoadPlugin "vmem"\n')
-            f.write('LoadPlugin "swap"\n')
             if configType & 8 == 8:
                 f.write('# compute node specific\n')
                 f.write('LoadPlugin "libvirt"\n')
-            if configType & 2 == 2:
-                f.write('# network node specific\n')
-                f.write('LoadPlugin "iptables"\n')
-
             f.write('\n')
             f.write('<Plugin "network">\n')
             if configType & 1 == 1:
@@ -1986,24 +2158,15 @@ class OSConfigurator(object):
             f.write('  Server "' + controllerIP + '"\n')
             f.write('</Plugin>\n')
             f.write('\n')
-
             if configType & 1 == 1:
                 f.write('<Plugin rrdtool>\n')
                 f.write('  DataDir "/var/lib/collectd/rrd"\n')
                 f.write('</Plugin>\n')
                 f.write('\n')
-
-            f.write('<Plugin "interface">\n')
-            f.write('  Interface "lo"\n')
-            f.write('  IgnoreSelected true\n')
-            f.write('</Plugin>\n')
-
-            if (configType == 8) or (configType == 15):
+            if configType & 8 == 8:
                 f.write('<Plugin "libvirt">\n')
-                f.write('  Connection "qemu:///system"\n')
-                f.write('  HostnameFormat "name"\n')
+                f.write('  HostnameFormat uuid\n')
                 f.write('</Plugin>\n')
-
             f.close()
         except Exception:
             print "Error writing file. " + path + '/' + filename
@@ -2084,9 +2247,16 @@ class OSConfigurator(object):
 
     def _configureCollectdAgent(self, collectd_listener, component):
         if collectd_listener is None: # Only once...
+            self._installDeb('collectd-core',interactive=False)
             collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
                 'localhost')
-            # Is a Controller?
+            if component.get_name()=='controller':
+                try:
+                    if not os.path.exists('/var/lib/collectd/rrd'):
+                        utils.execute('mkdir /var/lib/collectd/rrd', check_exit_code=False)
+                    utils.execute('ln -s /var/lib/collectd/rrd /var/www/rrd', check_exit_code=False)
+                except Exception:
+                    raise Exception("Cannot create symbolic link to rrd folder")
         return collectd_listener
 
     def importConfiguration(self, xml):
@@ -2160,6 +2330,13 @@ class OSConfigurator(object):
                         result = self._horizonConfig.install(hostname)
                         if len(result) > 0: return result
 
+                    # Configure Portal
+                    use_portal = self._filler.getPropertyValue(component, 'portal', 'enabled', 'true') == 'true'
+                    if use_portal:
+                        self._portalConfig.write(component)
+                        result = self._portalConfig.install(hostname)
+                        if len(result) > 0: return result
+
                     # If we have to use Nexenta, install nova-volume for nexenta here
                     use_nexenta = self._filler.getPropertyValue(component, 'nexenta_san', 'use_nexenta',
                         'false') == 'true'
@@ -2176,6 +2353,10 @@ class OSConfigurator(object):
                         # Is a Compute?
                 if component.get_name() == 'compute':
                     configType |= 8
+                        # Network interfaces
+                    management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
+                    flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
+                    self._configureLinkAggregation(management_network_bond=management_interface,service_network_bond=flat_interface)
                     self._novaComputeConfig.write(component)
                     result = self._novaComputeConfig.install(hostname)
                     if len(result) > 0: return result
@@ -2196,18 +2377,16 @@ class OSConfigurator(object):
                         self._novaVolumeLinuxLVMConfig.write(component)
                         result = self._novaVolumeLinuxLVMConfig.install(hostname)
                         if len(result) > 0: return result
-                        # Add the rest of the components here...
-                        #
-                        #
-                        #
-                        # configType = 15, single node
-                        # configType = 7, dual node controller
-                        # configType = 1, 2, 4 multinode
-                        # configType = 8 dual o multinode (compute node)
-
-                        # Deprecated.
-                        #                    self._createCollectdConfigFile(configType,collectd_listener)
-                        #                    utils.execute('service collectd restart')
+# Add the rest of the components here...
+#
+#
+#
+# configType = 15, single node
+# configType = 7, dual node controller
+# configType = 1, 2, 4 multinode
+# configType = 8 dual o multinode (compute node)
+                self._createCollectdConfigFile(configType,collectd_listener)
+                utils.execute('service collectd restart')
             return ''
         else:
             return 'You should run this program as super user.'
@@ -2217,22 +2396,22 @@ templates = {
 
     'interfaces': """
 auto eth0
-allow-bond0 eth0
 iface eth0 inet manual
     bond-master bond0
 
 auto eth1
-allow-bond1 eth1
 iface eth1 inet manual
     bond-master bond1
 
 auto bond0
 iface bond0 inet dhcp
-        bond-mode 1
-        miimon 100
+    bond-slaves none
+    bond-mode 1
+    miimon 100
 
 auto bond1
 iface bond1 inet manual
+    bond-slaves none
     bond-mode 1
     miimon 100
     post-up ifconfig $IFACE up
@@ -2241,7 +2420,6 @@ iface bond1 inet manual
 
     'iface_bonding': """
 auto %(iface)s
-allow-%(bond)s %(iface)s
 iface %(iface)s inet manual
     bond-master %(bond)s
     """,

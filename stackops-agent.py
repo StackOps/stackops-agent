@@ -24,6 +24,7 @@ import time
 import os
 import traceback
 import urllib
+import cgi
 from twisted.internet import reactor, threads
 from twisted.web import server, resource
 from twisted.web.static import File
@@ -38,8 +39,8 @@ import utils
 
 import status
 
-_target = 'installer.stackops.org'
-#_target = 'installer.qa.stackops.org/stackops'
+#_target = 'installer.stackops.org'
+_target = 'installer.qa.stackops.org/stackops'
 _port = 8888
 _status_file = '/etc/nova/CONFIG_STATUS'
 
@@ -56,6 +57,36 @@ def importConfiguration(configurator, str):
     xml = StackOpssubs.parse(strio)
     return configurator.importConfiguration(xml)
 
+def _tail(f, n, offset=None):
+    """Reads a n lines from f with an offset of offset lines.  The return
+    value is a tuple in the form ``(lines, has_more)`` where `has_more` is
+    an indicator that is `True` if there are more lines in the file.
+    """
+    avg_line_length = 74
+    to_read = n + (offset or 0)
+
+    while 1:
+        try:
+            f.seek(-(avg_line_length * to_read), 2)
+        except IOError:
+            f.seek(0)
+        pos = f.tell()
+        lines = f.read().splitlines()
+        if len(lines) >= to_read or pos == 0:
+            return lines[-to_read:offset and -offset or None],\
+                   len(lines) > to_read or pos > 0
+        avg_line_length *= 1.3
+
+def tail():
+    try:
+        f = open('/var/log/stackops/stackops-agent.py.log')
+    except Exception as e:
+        er = traceback.format_exc()
+        return "\n".join(er)
+    (log_content, llength) = _tail(f,1000)
+    f.close()
+    return "\n".join(log_content)
+
 def showConfigDone():
     str = '<html>'
     str += '<head>'
@@ -64,7 +95,7 @@ def showConfigDone():
     str += '<body>'
     str += 'Installation completed. Node ready. Please wait...<br/>'
     str += '<script type="text/javascript">'
-    str += 'window.location = "http://' + _target + '/install/cloudlist"'
+    str += 'window.location = "http://' + _target + '/install/success"'
     str += '</script>'
     str += '</html>'
     return str
@@ -75,10 +106,47 @@ def showError(txt):
     str += '<title>ERROR!</title>'
     str += '</head>'
     str += '<body>'
+    str += '<div style="display:none">'
+    str += '<form name="errorform" id="errorform" action="http://' + _target + '/install/error" method="post" >'
+    str += '<textarea name="error" id="error">'
     if txt is not None:
         str += txt.replace("\n","<br />\n")
+    str += '</textarea>'
+    str += '<textarea name="log" id="log">'
+    str += _displayLog()
+    str += '</textarea>'
+    str += '</div>'
+    str += '</body>'
+    str += '<script type="text/javascript">'
+    str += 'document.errorform.submit();'
+    str += '</script>'
     str += '</html>'
     return str
+
+def showLog():
+    str = '<html>'
+    str += '<head>'
+    str += '<title>Log file</title>'
+    str += '<META HTTP-EQUIV="refresh" CONTENT="30">'
+    str += '</head>'
+    str += '<script type="text/javascript">window.onload = function()'
+    str += ' { var pre0 = document.getElementsByTagName("pre")[0];'
+    str += ' window.scrollTo(0, pre0.offsetHeight); }; </script>'
+    str += '<body>'
+    str += '<pre style="line-height: 50%;"><font size="-1">'
+    str += _displayLog().replace("\n","<br />\n")
+    str += '</font></pre>'
+    str += '</body>'
+    str += '</html>'
+    return str
+
+def _displayLog():
+    txt = tail()
+    str = ''
+    if txt is not None:
+        str += cgi.escape(txt)
+    return str
+
 
 
 class ThreadedResource(resource.Resource):
@@ -242,17 +310,8 @@ class GetLog(ThreadedResource):
             avg_line_length *= 1.3
 
     def GET(self, request):
-        try:
-            f = open('/var/log/stackops/stackops-agent.py.log')
-        except Exception as e:
-            request.setHeader('content-type', 'text/html')
-            er = traceback.format_exc()
-            request.setResponseCode(500)
-            return showError(er)
-        request.setHeader('content-type', 'text/plain')
-        (log_content, llength) = self._tail(f,1000)
-        f.close()
-        return "\n".join(log_content)
+        request.setHeader('content-type', 'text/html')
+        return showLog()
 
 class PageNotFoundError(ThreadedResource):
 

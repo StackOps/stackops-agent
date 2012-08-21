@@ -127,11 +127,11 @@ def showLog():
     str = '<html>'
     str += '<head>'
     str += '<title>Log file</title>'
-    str += '<META HTTP-EQUIV="refresh" CONTENT="30">'
     str += '</head>'
     str += '<script type="text/javascript">window.onload = function()'
     str += ' { var pre0 = document.getElementsByTagName("pre")[0];'
-    str += ' window.scrollTo(0, pre0.offsetHeight); }; </script>'
+    str += ' window.scrollTo(0, pre0.offsetHeight); '
+    str += ' setTimeout("location.reload(true);", 30000); } </script>'
     str += '<body>'
     str += '<pre style="line-height: 50%;"><font size="-1">'
     str += _displayLog().replace("\n","<br />\n")

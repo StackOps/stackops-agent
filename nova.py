@@ -973,6 +973,8 @@ class HorizonConfig(Config):
         utils.execute(
             "cp -f %s/favicon-stackops.ico %s/favicon.ico" % (img_path, img_path)
             , check_exit_code=False)
+        utils.execute(
+            "sed -i 's/ENABLE_JUJU_PANEL = True/ENABLE_JUJU_PANEL = False/g' /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py")
         return
 
 

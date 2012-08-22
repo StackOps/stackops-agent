@@ -315,7 +315,7 @@ class OSConfigurator(object):
             utils.execute("sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config ")
             utils.execute("sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config ")
             utils.execute("sed -i 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config ")
-            utils.execute("sed -i 's/%sudo ALL=(ALL) ALL/%sudo ALL=(ALL) NOPASSWD:ALL/g' /etc/sudoers")
+            utils.execute("sed -i 's/%sudo.*ALL=(ALL:ALL) ALL/%sudo ALL=(ALL) NOPASSWD:ALL/g' /etc/sudoers")
             with open('/etc/ssh/sshd_config', 'a') as ssh_config:
                 ssh_config.write('\nUseDNS no')
             utils.execute("adduser stackops sudo")

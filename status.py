@@ -35,46 +35,23 @@ def rabbitmq_running():
     out = getoutput('invoke-rc.d rabbitmq-server status')
     return bool(re.search(r'^Node .+ with Pid .+: running', out, re.M))
 
-test_commands = { # Format: service_name: (test_func, param1, param2, ....)
-    'nova-api':         (service_running, 'nova-api'),
-    'nova-scheduler':   (service_running, 'nova-scheduler'),
-    'nova-objectstore': (service_running, 'nova-objectstore'),
-    'nova-vncproxy':    (service_running, 'nova-vncproxy'),
-    'nova-volume':      (service_running, 'nova-volume'),
-    'nova-network':     (service_running, 'nova-network'),
-    'nova-compute':     (service_running, 'nova-compute'),
-    'libvirt':          (service_running, 'libvirt-bin'),
-    'mysql':            (service_running, 'mysql'),
-    'rabbitmq':         (rabbitmq_running, ),
-}
+def get_test_command(service):
+    if service == 'rabbitmq':
+        return (rabbitmq_running, )
+    return (service_running, service)
 
 def get_node_services():
-    services = []
-    if exists('/etc/nova/nova-controller.conf'):
-        services.extend(('nova-api', 'nova-scheduler', 'nova-objectstore',
-                        'nova-vncproxy', 'nova-volume'))
-    if exists('/etc/nova/nova-network.conf'):
-        services.append('nova-network')
-    if exists('/etc/nova/nova-volume.conf'):
-        services.append('nova-volume')
-    if exists('/etc/nova/nova-compute.conf'):
-        services.extend(('libvirt', 'nova-compute'))
-    if package_installed('mysql-server'):
-        services.append('mysql')
-    if package_installed('rabbitmq-server'):
-        services.append('rabbitmq')
-    return services
-
-def package_installed(packagename):
-    output = getoutput("dpkg-query -W -f='${status}' " + packagename)
-    if not 'not-installed' in output and 'installed' in output:
-        return True
-    return False
+    service_list = ['nova-api', 'nova-scheduler', 'nova-consoleauth', 'nova-network', 'glance-api', 'glance-registry',
+        'keystone', 'novnc', 'nova-compute', 'libvirt-bin', 'nova-volume', 'mysql']
+    services_list = [service for service in service_list if exists( '/etc/init/%s.conf'%service )]
+    if exists('/etc/init.d/rabbitmq-server'):
+        service_list.append('rabbitmq')
+    return services_list
 
 def get_services_status():
     status = []
     for service in get_node_services():
-        test_command = test_commands[service]
+        test_command = get_test_command(service)
         running = test_command[0](*test_command[1:])
         status.append((service, running))
     return status

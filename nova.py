@@ -777,6 +777,8 @@ class NovaComputeConfig(Config):
 
     def _configureVolumeNFS(self):
         # configure NFS volumes mount
+        if not os.path.exists(self.volumes_path):
+            utils.execute('mkdir -p %s' % self.volumes_path, check_exit_code=False)
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0' % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
@@ -1293,7 +1295,7 @@ class QEMUVolumeConfig(Config):
     Use virtual images as block devices
     '''
 
-    _filename = "nova-volume.conf"
+    _filename = "nova-volume-stackops.conf"
 
     def __init__(self):
         '''
@@ -1303,13 +1305,14 @@ class QEMUVolumeConfig(Config):
     # Write the parameters (if possible) from the xml file
     def write(self, xmldoc):
         # Basic common parameters
-        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose')
-        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon')
-        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver')
-        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca')
-        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir')
+        self.verbose = self._filler.getPropertyValue(xmldoc, 'generic', 'verbose', 'true')
+        self.nodaemon = self._filler.getPropertyValue(xmldoc, 'generic', 'nodaemon', 'true')
+        self.auth_driver = self._filler.getPropertyValue(xmldoc, 'authentication', 'driver',
+            'nova.auth.dbdriver.DbDriver')
+        self.use_project_ca = self._filler.getPropertyValue(xmldoc, 'authentication', 'use_project_ca', 'true')
+        self.logdir = self._filler.getPropertyValue(xmldoc, 'logs', 'dir', '/var/log/nova')
         self.state_path = self._filler.getPropertyValue(xmldoc, 'state', 'path', '/var/lib/nova')
-        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/tmp')
+        self.lock_path = self._filler.getPropertyValue(xmldoc, 'generic', 'lock_path', '/var/lock/nova')
 
         # NOVA database configuration
         self.nova_username = self._filler.getPropertyValue(xmldoc, 'database', 'username', 'root')
@@ -1318,18 +1321,17 @@ class QEMUVolumeConfig(Config):
         self.nova_port = self._filler.getPropertyValue(xmldoc, 'database', 'port', '3306')
         self.nova_schema = self._filler.getPropertyValue(xmldoc, 'database', 'schema', 'nova')
         self.nova_drop_schema = self._filler.getPropertyValue(xmldoc, 'database', 'dropschema', 'true') == 'true'
-        self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s' % (
-            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema)
+        self.nova_charset = self._filler.getPropertyValue(xmldoc, 'database', 'charset', 'utf8')
+        self.nova_sql_connection = 'mysql://%s:%s@%s:%s/%s?charset=%s' % (
+            self.nova_username, self.nova_password, self.nova_host, self.nova_port, self.nova_schema, self.nova_charset)
 
-        # RabbitMQ
-        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname')
+        # RabbitMQ configuration
+        self.rabbit_host = self._filler.getPropertyValue(xmldoc, 'rabbitmq', 'hostname', '127.0.0.1')
 
-        # Network interfaces
-        self.iface_list = self._operatingsystem.getNetworkConfiguration()
+        # My IP
         self.management_interface = self._filler.getPropertyValue(xmldoc, 'interfaces', 'management_interface', 'eth0')
-        for iface in self.iface_list:
-            if iface['name'] == self.management_interface:
-                self.my_ip = iface['address']
+        self.my_ip = self.whatIsMyIp(self.management_interface)
+
 
         # NOVA-VOLUME QEMU Specific
         self.volume_driver = self._filler.getPropertyValue(xmldoc, 'nas', 'volume_driver',
@@ -1362,39 +1364,45 @@ class QEMUVolumeConfig(Config):
         self._writeFile(self._filename, parameters)
         return
 
-    def _enableInitFiles(self):
-        utils.execute('mv /etc/init/nova-volume.conf.disabled /etc/init/nova-volume.conf', None, None, False)
-
-    def _restartServices(self):
-        utils.execute('stop nova-volume; start nova-volume')
-
-    def _configureNFS(self):
+    def _configure(self):
         # configure NFS mount
+        if not os.path.exists(self.volumes_path):
+            utils.execute('mkdir -p %s' % self.volumes_path, check_exit_code=False)
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
         utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.volumes_path, self.mount_parameters)
-        utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
+        utils.execute("service nova-volume stop", check_exit_code=False)
+        utils.execute(
+            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-volume.conf" % '--flagfile=/etc/nova/nova-volume-stackops.conf')
+        utils.execute("service nova-volume start")
 
     def install(self, hostname):
+        """
+        Install all stuff needed to run NovaVolume with QEMU driver for Nova
+        """
         result = ''
         try:
-            # Install packages for component
-            self.installPackages()
-            # Mount shared file system
-            self._configureNFS()
-            # enable controller components
-            self._enableInitFiles()
-            # start compute components
-            self._restartServices()
+            if getpass.getuser() == 'root':
+                # Install packages for component
+                self.installPackages()
+                self._configure()
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
         return result
 
+    def uninstall(self, hostname):
+        """
+        Uninstall process
+        """
+        utils.execute("apt-get -y --purge remove nova-volume nfs-common qemu-kvm", check_exit_code=False)
+        utils.execute("apt-get -y clean", check_exit_code=False)
+        return
+
     def installPackages(self):
         self.installPackagesCommon()
-        self._installDeb('qemu-kvm')
-        self._installDeb('nfs-common')
+        self._installDeb('nova-volume nfs-common qemu-kvm', interactive=False)
+        return

@@ -310,8 +310,15 @@ class GetLog(ThreadedResource):
             avg_line_length *= 1.3
 
     def GET(self, request):
-        request.setHeader('content-type', 'text/html')
-        return showLog()
+        format = request.args.get('format',['html'])[0].lower()
+        if format == 'raw':
+            request.setHeader('content-type', 'text/plain')
+            return tail()
+        if format == 'html':
+            request.setHeader('content-type', 'text/html')
+            return showLog()
+        request.setResponseCode(501)
+        return 'Format not supported'
 
 class PageNotFoundError(ThreadedResource):
 

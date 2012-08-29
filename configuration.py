@@ -153,6 +153,12 @@ class OSConfigurator(object):
         Constructor
         '''
 
+    def _addDefaultUsers(self):
+        utils.execute('addgroup --system --gid 9753 nova', check_exit_code=False)
+        utils.execute('adduser --system --home /var/lib/nova --shell /bin/false --no-create-home --uid 9753 --ingroup nova nova', check_exit_code=False)
+        utils.execute('addgroup --system --gid 9754 glance', check_exit_code=False)
+        utils.execute('adduser --system --home /var/lib/glance --shell /bin/false --no-create-home --uid 9754 --ingroup glance glance', check_exit_code=False)
+
     def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
         """Configure initial network link aggregation (NIC bonding)"""
 
@@ -380,6 +386,8 @@ class OSConfigurator(object):
             hostname = xml.get_software().get_os().get_network().get_hostname()
             # Change hostname
             self._changeHostname(hostname)
+            # Set default users
+            self._addDefaultUsers()
             configType = 0
             ntpServer = None
             xymon_server = None

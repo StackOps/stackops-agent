@@ -467,6 +467,11 @@ class OSConfigurator(object):
                         result = self._qemuVolumeConfig.install(hostname)
                         if len(result) > 0: return result
                         # Is a Compute?
+
+                    # Install the test distro by default
+                    install_test_distro = self._filler.getPropertyValue(component, 'generic', 'test_distro','true') == 'true'
+                    if install_test_distro:
+                        utils.execute('source pubttylinuxlocal.sh', check_exit_code=False)
                 if component.get_name() == 'compute':
                     configType |= 8
                         # Network interfaces

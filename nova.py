@@ -875,9 +875,9 @@ class NovaComputeConfig(Config):
                     self._configureNFS() # Configure NFS
                 if self.instances_filesystem_mount_type == 'glusterfs':
                     self._configureGlusterFS() # Configure GlusterFS
-                if self.storage_hostname != 'nova-controller':
-                    self._configureNovaVolumeHost() # Configure NovaVolume host name
                 if self.use_iscsi:
+                    if self.storage_hostname != 'nova-controller':
+                        self._configureNovaVolumeHost() # Configure NovaVolume host name
                     self._configureISCSI()
                 self._configureLibvirt(hostname) # Enable Libvirt communication
                 self._configureNovaCompute()

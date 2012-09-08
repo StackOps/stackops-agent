@@ -478,8 +478,7 @@ class NovaNetworkConfig(Config):
         if ip_list.startswith('['):
             ips = eval(ip_list)
             for ip in ips:
-                utils.execute('/var/lib/stackops/addfloatingip.sh %s %s %s %s %s' % (
-                    self.nova_host, self.nova_port, self.nova_username, self.nova_password, ip))
+                utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip))
         else:
             utils.execute(
                 'nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))

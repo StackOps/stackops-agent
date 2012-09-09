@@ -170,8 +170,6 @@ class NovaApiConfig(Config):
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-api stop", check_exit_code=False)
         utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-api.conf" % '--flagfile=/etc/nova/nova-api-stackops.conf')
-        utils.execute(
             "sed -i 's/%%SERVICE_PASSWORD%%/%s/g' /etc/nova/api-paste.ini" % self.admin_password)
         utils.execute(
             "sed -i 's/%%SERVICE_TENANT_NAME%%/%s/g' /etc/nova/api-paste.ini" % 'service')
@@ -319,8 +317,6 @@ class NovaSchedulerConfig(Config):
 
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-scheduler stop", check_exit_code=False)
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-scheduler.conf" % '--flagfile=/etc/nova/nova-scheduler-stackops.conf')
         if os.path.exists(self.state_path):
             utils.execute('chown nova:nova -R %s' % self.state_path)
         utils.execute("service nova-scheduler start")
@@ -466,8 +462,6 @@ class NovaNetworkConfig(Config):
 
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-network stop", check_exit_code=False)
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-network.conf" % '--flagfile=/etc/nova/nova-network-stackops.conf')
         if os.path.exists(self.state_path):
             utils.execute('chown nova:nova -R %s' % self.state_path)
         utils.execute("service nova-network start")
@@ -739,10 +733,6 @@ class NovaComputeConfig(Config):
         except Exception as e:
             print e
         utils.execute("service nova-compute stop", check_exit_code=False)
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-compute.conf" % '--flagfile=/etc/nova/nova-compute-stackops.conf')
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova-compute.conf#%s#g' /etc/init/nova-compute.conf" % ' ')
         utils.execute("rm -f /etc/nova/nova-compute.conf", check_exit_code=True)
         if os.path.exists(self.state_path):
             utils.execute('chown nova:nova -R %s' % self.state_path)
@@ -1048,8 +1038,6 @@ class NovaVncProxyConfig(Config):
         utils.execute("service nova-consoleauth stop", check_exit_code=False)
         utils.execute(
             "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init.d/novnc" % '--flagfile=/etc/nova/nova-vncproxy-stackops.conf')
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-consoleauth.conf" % '--flagfile=/etc/nova/nova-vncproxy-stackops.conf')
         utils.execute("service novnc start")
         utils.execute("service nova-consoleauth start")
         return
@@ -1149,8 +1137,6 @@ class NovaVolumeLinuxLVMConfig(Config):
 
         self._writeFile(self._filename, parameters)
         utils.execute("service nova-volume stop", check_exit_code=False)
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-volume.conf" % '--flagfile=/etc/nova/nova-volume-stackops.conf')
         # create nova-volumes
         utils.execute('vgremove -ff nova-volumes; pvcreate -ffy ' + self.lvm_device)
         utils.execute('vgcreate nova-volumes ' + self.lvm_device)
@@ -1375,8 +1361,6 @@ class QEMUVolumeConfig(Config):
         # mount NFS remote
         utils.execute('mount -a')
         utils.execute("service nova-volume stop", check_exit_code=False)
-        utils.execute(
-            "sed -i 's#--flagfile=/etc/nova/nova.conf#%s#g' /etc/init/nova-volume.conf" % '--flagfile=/etc/nova/nova-volume-stackops.conf')
         utils.execute("service nova-volume start")
 
     def install(self, hostname):

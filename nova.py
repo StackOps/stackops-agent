@@ -1337,6 +1337,7 @@ class QEMUVolumeConfig(Config):
                       'auth_driver': self.auth_driver,
                       'logdir': self.logdir,
                       'state_path': self.state_path,
+                      'root_helper': 'sudo nova-rootwrap',
                       'rabbit_host': self.rabbit_host,
                       'use_project_ca': self.use_project_ca,
                       'my_ip': self.my_ip,

@@ -507,7 +507,7 @@ class OSConfigurator(object):
 # configType = 1, 2, 4 multinode
 # configType = 8 dual o multinode (compute node)
                 self._createCollectdConfigFile(configType,collectd_listener)
-                utils.execute('service collectd restart')
+                utils.execute('service collectd restart', check_exit_code=False)
             return ''
         else:
             return 'You should run this program as super user.'

@@ -22,6 +22,7 @@ import getpass
 import os
 import shutil
 import install
+import re
 
 import utils
 
@@ -469,13 +470,9 @@ class NovaNetworkConfig(Config):
 
     def _addFloatingIP(self, ip_list):
         # Add floating ips
-        if ip_list.startswith('['):
-            ips = eval(ip_list)
-            for ip in ips:
-                utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip))
-        else:
-            utils.execute(
-                'nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip_list))
+        ip_list = filter(bool, re.split(r'[^0-9./]', ip_list))
+        for ip in ip_list:
+            utils.execute('nova-manage --flagfile=%s float create %s' % ('/etc/nova/nova-network-stackops.conf', ip))
 
     def _addFirewallRules(self, publicip, bridgeif):
         utils.execute("service iptables-persistent flush", check_exit_code=False)

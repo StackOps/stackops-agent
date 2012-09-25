@@ -132,6 +132,7 @@ class OSConfigurator(object):
     classdocs
     '''
 
+    _monitoringConfig = ConfigFactory().getConfig('monitoring.MonitoringConfig')
     _mysqlMasterConfig = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
     _rabbitMasterConfig = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
     _keystoneConfig = ConfigFactory().getConfig('keystone.KeystoneConfig')
@@ -240,69 +241,6 @@ class OSConfigurator(object):
         utils.execute("sed -i 's/server ntp.ubuntu.com/server " + ntpHost + "/g' /etc/ntp.conf")
         utils.execute("service ntp stop; ntpdate -u %s; service ntp start" % ntpHost, check_exit_code=False)
 
-    def _createCollectdConfigFile(self, configType, controllerIP):
-        path = '/etc/collectd'
-        filename = 'collectd.conf'
-        try:
-            if not os.path.exists(path):
-                raise Exception("Directory " + path + " does not exists")
-        except Exception:
-            raise Exception("Error reading directory " + path)
-        try:
-            f = open(path + '/' + filename, 'w')
-            f.write('# This is an automatically generated file by stackops\n')
-            f.write('# Change the parameters manually at your own risk\n')
-            f.write('FQDNLookup true\n')
-            f.write('\n')
-            f.write('LoadPlugin "logfile"\n')
-            f.write('LoadPlugin "network"\n')
-            f.write('\n')
-            if configType & 1 == 1:
-                f.write('# Server configuration\n')
-                f.write('LoadPlugin "rrdtool"\n')
-                f.write('\n')
-            f.write('# Client configuration\n')
-            if configType & 8 == 8:
-                f.write('# compute node specific\n')
-                f.write('LoadPlugin "libvirt"\n')
-            f.write('\n')
-            f.write('<Plugin "network">\n')
-            if configType & 1 == 1:
-                f.write('  Listen "' + controllerIP + '"\n')
-            f.write('  Server "' + controllerIP + '"\n')
-            f.write('</Plugin>\n')
-            f.write('\n')
-            if configType & 1 == 1:
-                f.write('<Plugin rrdtool>\n')
-                f.write('  DataDir "/var/lib/collectd/rrd"\n')
-                f.write('</Plugin>\n')
-                f.write('\n')
-            if configType & 8 == 8:
-                f.write('<Plugin "libvirt">\n')
-                f.write('  HostnameFormat uuid\n')
-                f.write('</Plugin>\n')
-            f.close()
-        except Exception:
-            print "Error writing file. " + path + '/' + filename
-            raise Exception("Error writing file. " + path + '/' + filename)
-
-
-    def _configureXymonServer(self, xymon_ip):
-        # Change default ntp server to client choice
-        try:
-            (stdout, stderr) = self._installDeb('xymon-client', interactive=False)
-            if len(stderr) > 0: return stderr
-            utils.execute("sed -i 's/127.0.0.1/%s/g' /etc/default/hobbit-client" % xymon_ip)
-            utils.execute("sed -i 's/.stackops.org//g' /etc/default/hobbit-client")
-            utils.execute(
-                "sed -i 's/grep -v tmpfs | awk/grep -v tmpfs | grep -v nfs | awk/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
-            utils.execute(
-                "sed -i 's/df -Pl -x iso9660/df -P -x iso9660/g' /usr/lib/hobbit/client/bin/hobbitclient-linux.sh")
-            utils.execute("service hobbit-client stop; service hobbit-client start", check_exit_code=False)
-            return ''
-        except:
-            return "Cannot install xymon-client. Does the package exists in the repository?"
-
     def _blacklistFb(self):
         # Blacklist framebuffer
         utils.execute('sed -i /vga16fb/d /etc/modprobe.d/blacklist-framebuffer.conf ')
@@ -336,42 +274,18 @@ class OSConfigurator(object):
         node = self._filler.createNode(cloud)
         return node
 
-    def _configureAuth(self, authorized_keys, component):
-        if authorized_keys is None: # Only once...
-            authorized_keys = self._filler.getPropertyValue(component, 'hardening', 'authorized_keys', '')
-            root_pass = self._filler.getPropertyValue(component, 'hardening', 'root_password', '')
-            stackops_pass = self._filler.getPropertyValue(component, 'hardening', 'stackops_password', '')
-            self._publishKeys(authorized_keys, root_pass, stackops_pass)
-        return authorized_keys
+    def _configureAuth(self, component):
+        authorized_keys = self._filler.getPropertyValue(component, 'hardening', 'authorized_keys', '')
+        root_pass = self._filler.getPropertyValue(component, 'hardening', 'root_password', '')
+        stackops_pass = self._filler.getPropertyValue(component, 'hardening', 'stackops_password', '')
+        self._publishKeys(authorized_keys, root_pass, stackops_pass)
+        return
 
-    def _configureNTP(self, component, ntpServer):
-        if ntpServer is None: # Only once...
-            ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
-                'ntp.ubuntu.com')
-            self._configureNTPClient(ntpServer)
-        return ntpServer
-
-    def _configureXymonAgent(self, component, xymon_server):
-        result = ''
-        if xymon_server is None: # Only once...
-            xymon_server = self._filler.getPropertyValue(component, 'monitoring', 'xymon_server', '')
-            if len(xymon_server) > 0:
-                result = self._configureXymonServer(xymon_server)
-        return xymon_server, result
-
-    def _configureCollectdAgent(self, collectd_listener, component):
-        if collectd_listener is None: # Only once...
-            self._installDeb('collectd-core',interactive=False)
-            collectd_listener = self._filler.getPropertyValue(component, 'monitoring', 'collectd_listener',
-                'localhost')
-            if component.get_name()=='controller':
-                try:
-                    if not os.path.exists('/var/lib/collectd/rrd'):
-                        utils.execute('mkdir /var/lib/collectd/rrd', check_exit_code=False)
-                    utils.execute('ln -s /var/lib/collectd/rrd /var/www/rrd', check_exit_code=False)
-                except Exception:
-                    raise Exception("Cannot create symbolic link to rrd folder")
-        return collectd_listener
+    def _configureNTP(self, component):
+        ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
+            'ntp.ubuntu.com')
+        self._configureNTPClient(ntpServer)
+        return
 
     def importConfiguration(self, xml):
         """
@@ -388,20 +302,19 @@ class OSConfigurator(object):
             self._changeHostname(hostname)
             # Set default users
             self._addDefaultUsers()
-            configType = 0
-            ntpServer = None
-            xymon_server = None
-            collectd_listener = None
-            authorized_keys = None
+            first_component = True
             for component in xml.get_cloud().get_component():
                 # One time configuration
-                authorized_keys = self._configureAuth(authorized_keys, component)
-                ntpServer = self._configureNTP(component, ntpServer)
-                (xymon_server, result) = self._configureXymonAgent(component, xymon_server)
-                if len(result) > 0: return result
-                collectd_listener = self._configureCollectdAgent(collectd_listener, component)
+                if first_component:
+                    result = self._configureAuth(component)
+                    if result is not None: return result
+                    result = self._configureNTP(component)
+                    if result is not None: return result
+                    self._monitoringConfig.write(component)
+                    result = self._monitoringConfig.install(hostname)
+                    if result is not None: return result
+                    first_component = False
                 if component.get_name() == 'controller':
-                    configType |= 1
                     # Install database
                     self._mysqlMasterConfig.write(component)
                     result = self._mysqlMasterConfig.install(hostname)
@@ -473,7 +386,6 @@ class OSConfigurator(object):
                     if install_test_distro:
                         utils.execute('cd /var/lib/stackops; ./pubttylinuxlocal.sh', check_exit_code=False)
                 if component.get_name() == 'compute':
-                    configType |= 8
                         # Network interfaces
                     management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
                     flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
@@ -483,7 +395,6 @@ class OSConfigurator(object):
                     if len(result) > 0: return result
                     # Is a Network?
                 if component.get_name() == 'network':
-                    configType |= 2
                     self._novaNetworkConfig.write(component)
                     result = self._novaNetworkConfig.install(hostname)
                     if len(result) > 0: return result
@@ -494,20 +405,9 @@ class OSConfigurator(object):
                     use_nfs = self._filler.getPropertyValue(component, 'nas', 'use_nas',
                         'false') == 'true'
                     if not use_nexenta and not use_nfs:
-                        configType |= 4
                         self._novaVolumeLinuxLVMConfig.write(component)
                         result = self._novaVolumeLinuxLVMConfig.install(hostname)
                         if len(result) > 0: return result
-# Add the rest of the components here...
-#
-#
-#
-# configType = 15, single node
-# configType = 7, dual node controller
-# configType = 1, 2, 4 multinode
-# configType = 8 dual o multinode (compute node)
-                self._createCollectdConfigFile(configType,collectd_listener)
-                utils.execute('service collectd restart', check_exit_code=False)
             return ''
         else:
             return 'You should run this program as super user.'

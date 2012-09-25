@@ -458,7 +458,7 @@ class NovaNetworkConfig(Config):
                       'flat_network_dhcp_start': self.flat_network_dhcp_start,
                       'force_dhcp_release': 'true',
                       'fixed_range': self.fixed_range,
-                      #                      'override_bridge_interface': self.flat_interface}
+                      'vlan_interface': self.flat_interface,
                       'flat_interface': self.flat_interface}
 
         self._writeFile(self._filename, parameters)

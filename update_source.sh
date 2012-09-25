@@ -1,1 +1,1 @@
-echo "deb http://packages.stackops.net/ lucid main" > /etc/apt/sources.list.d/stackops.list
+echo "deb http://packages.stackops.net/ precise main" > /etc/apt/sources.list.d/stackops.list

@@ -544,7 +544,7 @@ class NovaNetworkConfig(Config):
             # Install packages for component
             self.installPackages()
             self._addDummyIF(hostname)
-            #self._configurePublicIP()
+            self._configurePublicIP()
             self._enableForwarding()
             self._configureNovaNetwork()
             bridgeif = self._createDefaultNetworks()

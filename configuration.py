@@ -132,6 +132,7 @@ class OSConfigurator(object):
     classdocs
     '''
 
+    _bondigConfig = ConfigFactory().getConfig('bonding.BondingConfig')
     _monitoringConfig = ConfigFactory().getConfig('monitoring.MonitoringConfig')
     _mysqlMasterConfig = ConfigFactory().getConfig('mysql.MySQLMasterConfig')
     _rabbitMasterConfig = ConfigFactory().getConfig('rabbitmq.RabbitMQMasterConfig')
@@ -160,6 +161,7 @@ class OSConfigurator(object):
         utils.execute('addgroup --system --gid 202 glance', check_exit_code=False)
         utils.execute('adduser --system --home /var/lib/glance --shell /bin/false --no-create-home --uid 202 --ingroup glance glance', check_exit_code=False)
 
+    '''
     def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
         """Configure initial network link aggregation (NIC bonding)"""
 
@@ -211,6 +213,7 @@ class OSConfigurator(object):
         # Wait for bonding up.
         time.sleep(10)
         return
+    '''
 
     def _removeRepos(self):
         (stdout, stderr) = utils.execute('sed -i /precise-updates/d /etc/apt/sources.list')
@@ -314,6 +317,9 @@ class OSConfigurator(object):
                     result = self._monitoringConfig.install(hostname)
                     if result is not None: return result
                     first_component = False
+                    self._bondigConfig.write(component)
+                    result = self._bondigConfig.install()
+                    if result is not None: return result
                 if component.get_name() == 'controller':
                     # Install database
                     self._mysqlMasterConfig.write(component)
@@ -387,9 +393,9 @@ class OSConfigurator(object):
                         utils.execute('cd /var/lib/stackops; ./pubttylinuxlocal.sh', check_exit_code=False)
                 if component.get_name() == 'compute':
                         # Network interfaces
-                    management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
-                    flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
-                    self._configureLinkAggregation(management_network_bond=management_interface,service_network_bond=flat_interface)
+                    #management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
+                    #flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
+                    #self._configureLinkAggregation(management_network_bond=management_interface,service_network_bond=flat_interface)
                     self._novaComputeConfig.write(component)
                     result = self._novaComputeConfig.install(hostname)
                     if len(result) > 0: return result
@@ -412,6 +418,7 @@ class OSConfigurator(object):
         else:
             return 'You should run this program as super user.'
 
+'''
 # Templates for simple config-files generation.
 templates = {
 
@@ -446,4 +453,4 @@ iface %(iface)s inet manual
     """,
 
     }
-
+'''

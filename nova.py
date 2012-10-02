@@ -497,16 +497,16 @@ class NovaNetworkConfig(Config):
         # Configure Public interface
         for networkType in ['static', 'dhcp']:
             # enable flat interface
-            utils.execute(
-                "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
-                    networkType, networkType, self.flat_interface))
+            # utils.execute(
+            #    "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
+            #        networkType, networkType, self.flat_interface))
             # Configure Public interface
             if self.public_ip_mask != '255.255.255.255':
                 utils.execute(
                     "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s %s netmask %s\\n\\tpost-up route add default gw %s %s/g' /etc/network/interfaces" % (
                         networkType, networkType, self.public_interface, self.public_ip, self.public_ip_mask,
                         self.public_ip_gateway, self.public_interface))
-        utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
+        #utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
         if self.public_ip_mask != '255.255.255.255':
             utils.execute(
                 'ifconfig %s %s netmask %s' % (self.public_interface, self.public_ip, self.public_ip_mask))
@@ -544,7 +544,7 @@ class NovaNetworkConfig(Config):
             # Install packages for component
             self.installPackages()
             self._addDummyIF(hostname)
-            self._configurePublicIP()
+            #self._configurePublicIP()
             self._enableForwarding()
             self._configureNovaNetwork()
             bridgeif = self._createDefaultNetworks()

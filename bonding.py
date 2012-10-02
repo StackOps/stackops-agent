@@ -132,6 +132,7 @@ class BondingConfig(Config):
             bond_slaves = getattr(self, '%s_slaves' % bond_name)
             bond_options = getattr(self, '%s_options' % bond_name)
             self._configureInterfacesFile(bond_name, bond_slaves, bond_options)
+            self._configureOnline(bond_name, bond_slaves, bond_options)
         except Exception as e:
             return 'ERROR %s' % str(e)
 

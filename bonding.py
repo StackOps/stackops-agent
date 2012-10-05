@@ -35,7 +35,6 @@ class BondingConfig(Config):
         """
 
     def _configureInterfacesFile(self, bond_name, bond_slaves, bond_options):
-        bond_slaves = bond_slaves.split()
         with open('/etc/network/interfaces') as f:
             interfaces = f.read()
 
@@ -51,7 +50,7 @@ class BondingConfig(Config):
             # Convert slave to bond
             interfaces = re.sub(
                 r'(^[ \t]*iface[ \t]+)%s([ \t]+.*$)' % re.escape(reuse_iface),
-                r'\1%s\2\n\t%s' % (
+                r'\1%s\2\n\t%s\n\tbond-slaves none' % (
                     bond_name,
                     '\n\t'.join( ('bond-'+' '.join(o.split('=',1)) for o in bond_options.split()) )
                     ),
@@ -71,7 +70,7 @@ class BondingConfig(Config):
                 interfaces,
                 'auto %s' % bond_name,
                 'iface %s inet manual' % bond_name,
-                '\tbond-slaves %s' % ' '.join(bond_slaves),
+                '\tbond-slaves none',
                 '\n'.join( ('\tbond-'+' '.join(o.split('=',1)) for o in bond_options.split()) )
                 ))
 
@@ -123,14 +122,14 @@ class BondingConfig(Config):
             utils.execute('ifconfig %s %s netmask %s' % (bond_name, ip_info[0][2], ip_info[0][3]))
         else:
             utils.execute('ifconfig %s up' % bond_name)
-        for slave in bond_slaves.split():
+        for slave in bond_slaves:
             utils.execute('ifconfig %s up' % slave)
-        utils.execute( 'ifenslave %s %s' % (bond_name, bond_slaves) )
+        utils.execute( 'ifenslave %s %s' % (bond_name, ' '.join(bond_slaves)) )
 
     def _configureBond(self, bond_name):
         try:
-            bond_slaves = getattr(self, '%s_slaves' % bond_name)
-            bond_options = getattr(self, '%s_options' % bond_name)
+            bond_slaves = getattr(self, 'bonding_%s_slaves' % bond_name).split()
+            bond_options = getattr(self, 'bonding_%s_options' % bond_name)
             self._configureInterfacesFile(bond_name, bond_slaves, bond_options)
             self._configureOnline(bond_name, bond_slaves, bond_options)
         except Exception as e:
@@ -143,20 +142,20 @@ class BondingConfig(Config):
             for j in i.get_property():
                 property_name = j.get_name()
                 setattr(self, "%s_%s" % (service_name, property_name), j.get_value())
-        return
 
-    def install(self, hostname):
+    def install(self):
+        if self.component_name != 'compute':
+            return
         try:
             self.installPackages()
             for bond_name in ('bond0', 'bond1', 'bond2'):
-                if not getattr(self, '%s_slaves' % bond_name, None):
+                if not getattr(self, 'bonding_%s_slaves' % bond_name, None):
                     continue
                 error =  self._configureBond(bond_name)
                 if error:
                     return error
         except  Exception as inst:
             result = 'ERROR: %s' % str(inst)
-        return result
 
     def uninstall(self, hostname):
         try:

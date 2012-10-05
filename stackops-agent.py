@@ -260,6 +260,7 @@ class GetConfiguration(ThreadedResource):
         except:
             request.setHeader('content-type', 'text/html')
             er = traceback.format_exc()
+            print er
             request.setResponseCode(500)
             return showError(er)
 

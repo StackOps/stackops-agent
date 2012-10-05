@@ -351,7 +351,31 @@ class NovaSchedulerConfig(Config):
         return
 
 
-class NovaNetworkConfig(Config):
+class _NetworkConfig:
+
+    def _configureFlatInterface(self):
+        with open('/etc/network/interfaces') as f:
+            interfaces = f.read()
+        auto_match = re.search(r'^[ \t]*auto.*[ \t]+%s(?:[ \t]|$)' % re.escape(self.flat_interface), interfaces, re.M)
+        if not auto_match:
+            interfaces += '\nauto %s' % self.flat_interface
+        iface_match = re.search(
+            '^[ \t]*iface[ \t]+%s[ \t+]inet[\ t]+(\w)+[ \t]*$' % re.escape(self.flat_interface),
+            interfaces, re.M
+        )
+        if not iface_match:
+            interfaces += '\niface %s inet manual\n\tup ifconfig $IFACE up' % self.flat_interface
+        elif iface_match.group(1) == 'manual':
+            re.sub(
+                r'(^[ \t]*iface[ \t]+%s[ \t+]inet[\ t]+.*$)' % re.escape(self.flat_interface),
+                r'\1\n\tup ifconfig $IFACE up', interfaces, flags=re.M
+            )
+        if 'UP' not in utils.execute('ip link show %s' % self.flat_interface)[0].split()[2][1:-1].split(','):
+            utils.execute('ifconfig %s up' % self.flat_interface)
+        with open('/etc/network/interfaces', 'w') as f:
+            f.write( interfaces )
+
+class NovaNetworkConfig(Config, _NetworkConfig):
     _filename = "nova-network-stackops.conf"
 
     def __init__(self):
@@ -496,23 +520,16 @@ class NovaNetworkConfig(Config):
         utils.execute("sed -i '{:q;N;s/\\tpost-up[^][^]*.\\n//g;t q}' /etc/network/interfaces")
         # Configure Public interface
         for networkType in ['static', 'dhcp']:
-            # enable flat interface
-            # utils.execute(
-            #    "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
-            #        networkType, networkType, self.flat_interface))
-            # Configure Public interface
             if self.public_ip_mask != '255.255.255.255':
                 utils.execute(
                     "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s %s netmask %s\\n\\tpost-up route add default gw %s %s/g' /etc/network/interfaces" % (
                         networkType, networkType, self.public_interface, self.public_ip, self.public_ip_mask,
                         self.public_ip_gateway, self.public_interface))
-        #utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
         if self.public_ip_mask != '255.255.255.255':
             utils.execute(
                 'ifconfig %s %s netmask %s' % (self.public_interface, self.public_ip, self.public_ip_mask))
             utils.execute('route del default', check_exit_code=False)
             utils.execute('route add default gw %s %s' % (self.public_ip_gateway, self.public_interface))
-
 
     def _createDefaultNetworks(self):
         if self.network_manager == 'nova.network.manager.VlanManager':
@@ -545,6 +562,7 @@ class NovaNetworkConfig(Config):
             self.installPackages()
             self._addDummyIF(hostname)
             self._configurePublicIP()
+            self._configureFlatInterface()
             self._enableForwarding()
             self._configureNovaNetwork()
             bridgeif = self._createDefaultNetworks()
@@ -579,7 +597,7 @@ class NovaNetworkConfig(Config):
         return
 
 
-class NovaComputeConfig(Config):
+class NovaComputeConfig(Config, _NetworkConfig):
     _filename = "nova-compute-stackops.conf"
 
     PAGE_SIZE = 2 * 1024 * 1024
@@ -740,17 +758,6 @@ class NovaComputeConfig(Config):
         utils.execute("service nova-compute start")
         return
 
-    def _configureFlatInterface(self, hostname):
-        if hostname != 'nova-controller':
-            # Remove old configurations, if any
-            utils.execute("sed -i '{:q;N;s/\\tpost-up[^][^]*.\\n//g;t q}' /etc/network/interfaces")
-            for networkType in ['static', 'dhcp']:
-                # enable flat interface
-                utils.execute(
-                    "sed -i 's/inet %s/inet %s\\n\\tpost-up ifconfig %s 0.0.0.0/g' /etc/network/interfaces" % (
-                        networkType, networkType, self.flat_interface))
-            utils.execute('ifconfig ' + self.flat_interface + ' 0.0.0.0')
-
     def _configureNFS(self):
         # configure NFS mount
         if os.path.ismount(self.instances_path):
@@ -856,7 +863,7 @@ class NovaComputeConfig(Config):
                     self._configureHugePages()
                 self.installPackages() # Install packages for component
 
-                self._configureFlatInterface(hostname) # Configure Flat Interface
+                self._configureFlatInterface() # Configure Flat Interface
                 if self.hugepages and hostname != 'nova-controller':
                     self._configureApparmor()
                 if self.use_volume_nfs:

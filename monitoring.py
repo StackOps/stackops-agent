@@ -136,6 +136,8 @@ class MonitoringConfig(Config):
                     if result is not None:
                         return result
         except  Exception as inst:
+            import traceback
+            traceback.print_exc()
             result = 'ERROR: %s' % str(inst)
         return result
 

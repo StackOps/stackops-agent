@@ -316,10 +316,10 @@ class OSConfigurator(object):
                     self._monitoringConfig.write(component)
                     result = self._monitoringConfig.install(hostname)
                     if result is not None: return result
-                    first_component = False
                     self._bondigConfig.write(component)
                     result = self._bondigConfig.install()
                     if result is not None: return result
+                    first_component = False
                 if component.get_name() == 'controller':
                     # Install database
                     self._mysqlMasterConfig.write(component)

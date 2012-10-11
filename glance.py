@@ -94,7 +94,7 @@ class GlanceConfig(Config):
             # configure NFS mount
             mpoint = '%s %s nfs %s 0 0' % (
                 self.glance_mount_point, '/var/lib/glance/images', self.glance_mount_parameters)
-            utils.execute("sed -i 's#%s##g' /etc/fstab" % mpoint)
+            utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')

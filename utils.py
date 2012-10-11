@@ -24,7 +24,7 @@ import os
 import subprocess
 import socket
 import sys
-
+from tempfile import SpooledTemporaryFile
 from exception import ProcessExecutionError
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -98,3 +98,14 @@ def singleton(cls):
             instances[cls] = cls()
         return instances[cls]
     return getinstance
+
+def filter_file(filter, filename, membuffer=10485760):
+    tmp = SpooledTemporaryFile(max_size=membuffer)
+    with open(filename) as input:
+        for line in input:
+            if filter(line):
+                tmp.write(line)
+    tmp.seek(0)
+    with open(filename, 'w') as output:
+        for line in tmp:
+            output.write(line)

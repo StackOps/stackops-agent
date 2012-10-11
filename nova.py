@@ -756,13 +756,13 @@ class NovaComputeConfig(Config):
         if os.path.ismount(self.instances_path):
             utils.execute('umount %s' % self.instances_path)
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.instances_path, self.mount_parameters)
-        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+        utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         try:
             utils.execute('mount -a')
         except Exception as e:
-            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
             raise e
 
     def _configureVolumeNFS(self):
@@ -772,13 +772,13 @@ class NovaComputeConfig(Config):
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
         mpoint = '%s %s nfs %s 0 0' % (self.volumes_mount_point, self.volumes_path, self.volumes_mount_parameters)
-        utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+        utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
         utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         try:
             utils.execute('mount -a')
         except Exception as e:
-            utils.execute("sed -i '#%s#d' /etc/fstab" % mpoint)
+            utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
             raise e
 
     def _configureNovaVolumeHost(self):
@@ -1357,9 +1357,9 @@ class QEMUVolumeConfig(Config):
             utils.execute('mkdir -p %s' % self.volumes_path, check_exit_code=False)
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
-        utils.execute("sed -i '\#%s#d' /etc/fstab" % self.volumes_path)
+        utils.filter_file(lambda l:self.volumes_path not in l, '/etc/fstab')
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.volumes_path, self.mount_parameters)
-        utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
+        utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
         # mount NFS remote
         utils.execute('mount -a')
         utils.execute("service nova-volume stop", check_exit_code=False)

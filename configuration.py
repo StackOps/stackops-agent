@@ -161,60 +161,6 @@ class OSConfigurator(object):
         utils.execute('addgroup --system --gid 202 glance', check_exit_code=False)
         utils.execute('adduser --system --home /var/lib/glance --shell /bin/false --no-create-home --uid 202 --ingroup glance glance', check_exit_code=False)
 
-    '''
-    def _configureLinkAggregation(self, management_network_bond=None, service_network_bond=None):
-        """Configure initial network link aggregation (NIC bonding)"""
-
-        # Test if management network interdfce is dhcp configured.
-        interfaces_content = open('/etc/network/interfaces').read()
-        if not re.search(r'^iface[ \t]+(eth|bond)0[ \t]+inet[ \t]+dhcp', interfaces_content, re.I | re.M):
-            return
-
-        self._installDeb("ifenslave", interactive=False)
-
-        # Write new configuration.
-        interfaces_content = templates['interfaces']
-        aliases_content_tmp = ''
-        if management_network_bond:
-            interfaces_content += templates['iface_bonding'] % {'iface': management_network_bond, 'bond': 'bond0'}
-            aliases_content_tmp += 'alias bond0 bonding\n'
-        if service_network_bond:
-            interfaces_content += templates['iface_bonding'] % {'iface': service_network_bond, 'bond': 'bond1'}
-            aliases_content_tmp += 'alias bond1 bonding\n'
-        with open('/etc/network/interfaces', 'w') as f:
-            f.write(interfaces_content)
-        if os.path.exists('/etc/modprobe.d/aliases.conf'):
-            aliases_content = []
-            for line in open('/etc/modprobe.d/aliases.conf'):
-                if not 'bonding' in line:
-                    aliases_content.append(line)
-            aliases_content = ''.join(aliases_content)
-        else:
-            aliases_content = ''
-        aliases_content += aliases_content_tmp + 'options bonding mode=1 miimon=100 max_bonds=2'
-        with open('/etc/modprobe.d/aliases.conf', 'w') as f:
-            f.write(aliases_content)
-
-        # Manual setup without system reboot.
-        eth0_conf = utils.get_ip_info('eth0')
-        if eth0_conf:
-            eth0_conf = eth0_conf[0]
-            utils.execute('modprobe bonding')
-            utils.execute('ifconfig bond0 %s netmask %s' % eth0_conf[2:])
-            utils.execute('ifenslave bond0 eth0')
-            utils.execute('ifconfig eth1 up')
-            utils.execute('ifconfig bond1 up')
-            utils.execute('ifenslave bond1 eth1')
-            if management_network_bond:
-                utils.execute('ifenslave bond0 ' + management_network_bond)
-            if service_network_bond:
-                utils.execute('ifenslave bond1 ' + service_network_bond)
-
-        # Wait for bonding up.
-        time.sleep(10)
-        return
-    '''
-
     def _removeRepos(self):
         (stdout, stderr) = utils.execute('sed -i /precise-updates/d /etc/apt/sources.list')
         if len(stderr) > 0: return stderr
@@ -379,10 +325,6 @@ class OSConfigurator(object):
                     if install_test_distro:
                         utils.execute('cd /var/lib/stackops; ./pubttylinuxlocal.sh', check_exit_code=False)
                 if component.get_name() == 'compute':
-                        # Network interfaces
-                    #management_interface = self._filler.getPropertyValue(component, 'interfaces', 'management_interface_bond', '')
-                    #flat_interface = self._filler.getPropertyValue(component, 'interfaces', 'service_interface_bond', '')
-                    #self._configureLinkAggregation(management_network_bond=management_interface,service_network_bond=flat_interface)
                     self._novaComputeConfig.write(component)
                     result = self._novaComputeConfig.install(hostname)
                     if len(result) > 0: return result
@@ -404,40 +346,3 @@ class OSConfigurator(object):
             return ''
         else:
             return 'You should run this program as super user.'
-
-'''
-# Templates for simple config-files generation.
-templates = {
-
-    'interfaces': """
-auto eth0
-iface eth0 inet manual
-    bond-master bond0
-
-auto eth1
-iface eth1 inet manual
-    bond-master bond1
-
-auto bond0
-iface bond0 inet dhcp
-    bond-slaves none
-    bond-mode 1
-    miimon 100
-
-auto bond1
-iface bond1 inet manual
-    bond-slaves none
-    bond-mode 1
-    miimon 100
-    post-up ifconfig $IFACE up
-    pre-down ifconfig $IFACE down
-    """,
-
-    'iface_bonding': """
-auto %(iface)s
-iface %(iface)s inet manual
-    bond-master %(bond)s
-    """,
-
-    }
-'''

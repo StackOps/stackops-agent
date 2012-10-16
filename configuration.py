@@ -236,11 +236,6 @@ class OSConfigurator(object):
         utils.execute('echo "' + hostname + '" > /etc/hostname')
         utils.execute("sed -i 's/stackops-node/" + hostname + "/g' /etc/hosts")
 
-    def _configureNTPClient(self, ntpHost):
-        # Change default ntp server to client choice
-        utils.execute("sed -i 's/server ntp.ubuntu.com/server " + ntpHost + "/g' /etc/ntp.conf")
-        utils.execute("service ntp stop; ntpdate -u %s; service ntp start" % ntpHost, check_exit_code=False)
-
     def _blacklistFb(self):
         # Blacklist framebuffer
         utils.execute('sed -i /vga16fb/d /etc/modprobe.d/blacklist-framebuffer.conf ')
@@ -281,12 +276,6 @@ class OSConfigurator(object):
         self._publishKeys(authorized_keys, root_pass, stackops_pass)
         return
 
-    def _configureNTP(self, component):
-        ntpServer = self._filler.getPropertyValue(component, 'infrastructure', 'ntp_server',
-            'ntp.ubuntu.com')
-        self._configureNTPClient(ntpServer)
-        return
-
     def importConfiguration(self, xml):
         """
         Import the configuration from the XML definition file, and configure the selected nodes.
@@ -307,8 +296,6 @@ class OSConfigurator(object):
                 # One time configuration
                 if first_component:
                     result = self._configureAuth(component)
-                    if result is not None: return result
-                    result = self._configureNTP(component)
                     if result is not None: return result
                     self._monitoringConfig.write(component)
                     result = self._monitoringConfig.install(hostname)

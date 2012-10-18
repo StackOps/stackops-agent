@@ -7,6 +7,7 @@ TEMP="/tmp"
 COMPRESS="system_information/"
 DIR="/tmp/system_information"
 FILE="$(basename $0).$RANDOM.txt"
+FILE1="nova-manage-services-list.$RANDOM.txt"
 STACKOPS_HEAD="stackops-head"
 CONTROLLER="controller"
 COMPUTE="compute"
@@ -230,6 +231,11 @@ function check_resource()
  DIR_CONF="/tmp/system_information/$RESOURCE/configuration"
  DIR_BACKUPS="/tmp/system_information/$RESOURCE/backups"
  structure_directories
+ if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+    cd $DIR_LOG
+    > $FILE1 
+    nova-manage service list > $FILE1
+ fi
  compress_directory
 }
 

@@ -1,0 +1,268 @@
+#!/bin/bash
+# To get all information about the system
+#set -x
+#Execute scrip as ROOT User
+#Descompress with tar -jxvf system_information.tbz2
+TEMP="/tmp"
+COMPRESS="system_information/"
+DIR="/tmp/system_information"
+FILE="$(basename $0).$RANDOM.txt"
+FILE1="nova-manage-services-list.$RANDOM.txt"
+STACKOPS_HEAD="stackops-head"
+CONTROLLER="controller"
+COMPUTE="compute"
+RESOURCE=""
+
+function create_system_information()
+{
+ > $FILE  
+ {
+ echo "****1. HARDWARE INFORMATION****"
+ echo ""
+ echo "**1.1 Hardware Lister in XML**"
+ echo ""
+ lshw -xml
+ echo ""
+ echo "**1.2 System UUID**"
+ echo ""
+ cat /sys/class/dmi/id/product_uuid
+ echo ""
+ echo "****2. SYSTEM INFORMATION****"
+ echo ""
+ echo "**2.1 Unix Name**"
+ echo ""
+ uname -a
+ echo ""
+ echo "**2.2 Change User Password Expiry Information: User ROOT**"
+ echo ""
+ chage -l root
+ echo ""
+ echo "**2.3 Change User Password Expiry Information: User STACKOPS**"
+ echo ""
+ chage -l stackops
+ echo ""
+ echo "****3. DISK INFORMATION****"
+ echo ""
+ echo "**3.1 Disk Free**"
+ echo ""
+ df -h
+ echo ""
+ echo "**3.2 Mount Point**"
+ echo ""
+ mount
+ echo ""
+ echo "**3.3 Fixed Disk (Disk Partitioning)**"
+ echo ""
+ fdisk -l
+ echo ""
+ echo "****4. NETWORK INFORMATION****"
+ echo ""
+ echo "**4.1 Interface Configuration**"
+ echo ""
+ ifconfig -a
+ echo "**4.2 Network Interface Configuration Information**"
+ echo ""
+ cat /etc/network/interfaces
+ echo ""
+ } > $FILE
+echo "General System Information Generated"
+}
+
+function create_stackops_head_information_log()
+{
+ cp -r /var/log/stackops-head .
+ cp -r /var/log/installer .
+ cat /var/log/syslog > syslog
+ cat /var/log/dmesg > dmesg
+ echo "Stackops Head Log Information Generated: stackop-head, installer syslog and dmesg"
+}
+
+function create_stackops_head_information_conf()
+{
+ cp -r /var/lib/stackops-head/etc .
+ cp -r /var/lib/stackops-head/conf .
+ echo "Stackops Head Configuration Information Generated: stackops-head/etc and stackops-head/conf"
+}
+
+function create_stackops_head_backups()
+{
+ pass=$(cat /root/.mysql_pw)
+ head-manage db backup root $pass stackopshead > stackop-head.db
+ echo "Stackops Head Database Backup Information Generated"
+}
+
+
+function create_controller_information_log()
+{
+ cp -r /var/log/installer .
+ cp -r /var/log/stackops .
+ cp -r /var/log/nova .
+ cp -r /var/log/glance .
+ cat /var/log/syslog > syslog
+ cat /var/log/dmesg > dmesg
+ echo "Controller Log Information Generated: installer, stackops, nova, glance, syslog and dmesg"
+}
+
+function create_controller_compute_information_conf()
+{
+ sudo cp -r /var/lib/nova .
+ echo "$RESOURCE Log Information Generated: nova"
+}
+
+function create_controller_backups()
+{
+ mysqldump --user=root --password=stackops -B nova > nova.db
+ echo "Nova $RESOURCE Database Backup Information Generated"
+ mysqldump --user=root --password=stackops -B glance > glance.db
+ echo "Glance $RESOURCE  Database Backup Information Generated"
+}
+
+function create_compute_information_log()
+{
+ cp -r /var/log/installer .
+ cp -r /var/log/stackops .
+ cp -r /var/log/nova .
+ cat /var/log/syslog > syslog
+ cat /var/log/dmesg > dmesg
+ echo "Compute Log Information Generated: installer, stackops, nova, syslog and dmesg"
+}
+
+function structure_directories()
+{
+ if [ -d "$DIR_MAIN" ]; then    
+        cd $DIR_MAIN
+ else
+        mkdir $DIR_MAIN
+        cd $DIR_MAIN
+ fi
+
+ if [ -d "$DIR_LOG" ]; then    
+        cd $DIR_LOG        
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+         echo "Resource identified as Stackops-Head" 
+         create_stackops_head_information_log
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         echo "Resource identified as Controller" 
+         create_controller_information_log
+        fi
+
+        if [ "${RESOURCE:0:7}" == $COMPUTE ]; then
+         echo "Resource identified as Compute" 
+         create_compute_information_log
+        fi
+ else
+        mkdir $DIR_LOG
+        cd $DIR_LOG        
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+         echo "Resource identified as Stackops-Head" 
+         create_stackops_head_information_log
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         echo "Resource identified as Controller" 
+         create_controller_information_log
+        fi
+
+        if [ "${RESOURCE:0:7}" == $COMPUTE ]; then
+         echo "Resource identified as Compute" 
+         create_compute_information_log
+        fi
+ fi
+
+ if [ -d "$DIR_CONF" ]; then    
+        cd $DIR_CONF
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+         create_stackops_head_information_conf
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         create_controller_compute_information_conf
+        fi
+
+        if [ "${RESOURCE:0:7}" == $COMPUTE ]; then
+         create_controller_compute_information_conf
+        fi
+ else
+        mkdir $DIR_CONF
+        cd $DIR_CONF
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+         create_stackops_head_information_conf
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         create_controller_compute_information_conf
+        fi
+
+        if [ "{$RESOURCE:0:7}" == $COMPUTE ]; then
+         create_controller_compute_information_conf
+        fi
+ fi
+
+ if [ -d "$DIR_BACKUPS" ]; then    
+        cd $DIR_BACKUPS
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+        create_stackops_head_backups
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         create_controller_backups
+        fi
+
+ else
+        mkdir $DIR_BACKUPS
+        cd $DIR_BACKUPS
+        if [ "$RESOURCE" == $STACKOPS_HEAD ]; then
+         create_stackops_head_backups
+        fi
+ 
+        if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+         create_controller_backups
+        fi
+ fi
+}
+
+function check_resource()
+{
+ RESOURCE=$(uname -n)
+ DIR_MAIN="/tmp/system_information/$RESOURCE"
+ DIR_LOG="/tmp/system_information/$RESOURCE/logs"
+ DIR_CONF="/tmp/system_information/$RESOURCE/configuration"
+ DIR_BACKUPS="/tmp/system_information/$RESOURCE/backups"
+ structure_directories
+ if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+    cd $DIR_LOG
+    > $FILE1 
+    nova-manage service list > $FILE1
+ fi
+ compress_directory
+}
+
+function compress_directory(){
+ if [ -d "$TEMP" ]
+ then
+        cd $TEMP
+        tar -jcf "system_information.tbz2" "$COMPRESS"
+        rm -rf $COMPRESS
+	echo "Finished with compressing directories. Ready to send to Stackops and solve your petitions. Located in /tmp"
+
+ else
+       echo "ERROR: At the moment to generate the compress directory, /tmp directory does not exists"
+ fi
+}
+
+
+if [ -d "$DIR" ] 
+then    
+        cd $DIR
+        rm system_information.*
+        create_system_information
+        check_resource
+     
+else
+        mkdir $DIR
+        cd $DIR
+        create_system_information
+        check_resource
+fi

@@ -1357,9 +1357,9 @@ class QEMUVolumeConfig(Config):
             utils.execute('mkdir -p %s' % self.volumes_path, check_exit_code=False)
         if os.path.ismount(self.volumes_path):
             utils.execute('umount %s' % self.volumes_path)
-        utils.filter_file(lambda l:self.volumes_path not in l, '/etc/fstab')
         mpoint = '%s %s nfs %s 0 0' % (self.mount_point, self.volumes_path, self.mount_parameters)
         utils.filter_file(lambda l:mpoint not in l, '/etc/fstab')
+        utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
         # mount NFS remote
         utils.execute('mount -a')
         utils.execute("service nova-volume stop", check_exit_code=False)

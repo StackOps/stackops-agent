@@ -82,6 +82,9 @@ class PortalConfig(Config):
         utils.execute(
             '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS values (7, 'check.identity.endpoint', 'http://%s:35357');"''' % (
                 self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema, self.keystone_host))
+        utils.execute(
+            '''mysql -h%s --port=%s -u%s --password=%s --database=%s -e "insert into PORTAL_SETTINGS (property_kee,property_value) values ('mode','release');"''' % (
+                self.portal_host, self.portal_port, self.portal_username, self.portal_password, self.portal_schema))
 
         # JVM configuration
         utils.execute('sed -i /JAVA_OPTS/d /etc/default/tomcat7')

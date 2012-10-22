@@ -260,7 +260,6 @@ function compress_directory(){
 
 
 if [ -d "$DIR" ]; then
-        [ $(id -u) -eq 0 ] || { echo "$0: Only root may add a user or group to the system."; exit 1;}    
         cd $DIR
         rm system_information.*
         create_system_information

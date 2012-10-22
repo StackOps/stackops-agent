@@ -2,7 +2,8 @@
 # To get all information about the system
 #set -x
 #Execute scrip as ROOT User
-#Descompress with tar -jxvf system_information.tbz2
+#Descompress with tar -jxvf system_information.tar.bz2
+#Created by Jorge Valderrama
 TEMP="/tmp"
 COMPRESS="system_information/"
 DIR="/tmp/system_information"
@@ -72,8 +73,8 @@ function create_stackops_head_information_log()
 {
  cp -r /var/log/stackops-head .
  cp -r /var/log/installer .
- cat /var/log/syslog > syslog
- cat /var/log/dmesg > dmesg
+ cp /var/log/syslog .
+ cp /var/log/dmesg .
  echo "Stackops Head Log Information Generated: stackop-head, installer syslog and dmesg"
 }
 
@@ -87,44 +88,50 @@ function create_stackops_head_information_conf()
 function create_stackops_head_backups()
 {
  pass=$(cat /root/.mysql_pw)
- head-manage db backup root $pass stackopshead > stackop-head.db
- echo "Stackops Head Database Backup Information Generated"
+ head-manage db backup root $pass stackopshead > stackop-head.sql
+ if [ $? -gt 0 ]; then
+  echo "ERROR: At the moment to generate Stackop Head database backup"
+ else
+  echo "Stackops Head Database Backup Information Generated"
+ fi
 }
 
-
-function create_controller_information_log()
+function create_controller_compute_information_log()
 {
  cp -r /var/log/installer .
  cp -r /var/log/stackops .
  cp -r /var/log/nova .
- cp -r /var/log/glance .
- cat /var/log/syslog > syslog
- cat /var/log/dmesg > dmesg
- echo "Controller Log Information Generated: installer, stackops, nova, glance, syslog and dmesg"
+ cp /var/log/syslog .
+ cp /var/log/dmesg .
+ if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
+  cp -r /var/log/glance .
+  echo "Controller Log Information Generated: installer, stackops, nova, glance, syslog and dmesg"
+ else
+  echo "Compute Log Information Generated: installer, stackops, nova, syslog and dmesg"
+ fi
 }
 
 function create_controller_compute_information_conf()
 {
- sudo cp -r /var/lib/nova .
- echo "$RESOURCE Log Information Generated: nova"
+ cp -r /var/lib/nova .
+ echo "$RESOURCE Configuration Information Generated: nova"
 }
 
 function create_controller_backups()
 {
- mysqldump --user=root --password=stackops -B nova > nova.db
- echo "Nova $RESOURCE Database Backup Information Generated"
- mysqldump --user=root --password=stackops -B glance > glance.db
- echo "Glance $RESOURCE  Database Backup Information Generated"
-}
-
-function create_compute_information_log()
-{
- cp -r /var/log/installer .
- cp -r /var/log/stackops .
- cp -r /var/log/nova .
- cat /var/log/syslog > syslog
- cat /var/log/dmesg > dmesg
- echo "Compute Log Information Generated: installer, stackops, nova, syslog and dmesg"
+ pass=$(grep sql_connection /etc/nova/nova.conf | cut -d @ -f 1 | cut -d : -f 3)
+ mysqldump --user=root --password=$pass -B nova > nova.sql
+ if [ $? -gt 0 ]; then
+  echo "ERROR: At the moment to generate Nova database backup"
+ else
+  echo "Nova $RESOURCE Database Backup Information Generated"
+ fi 
+ mysqldump --user=root --password=$pass -B glance > glance.sql
+ if [ $? -gt 0 ]; then
+  echo "ERROR: At the moment to generate Glance database backups"
+ else 
+  echo "Glance $RESOURCE  Database Backup Information Generated"
+ fi 
 }
 
 function structure_directories()
@@ -145,12 +152,12 @@ function structure_directories()
  
         if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
          echo "Resource identified as Controller" 
-         create_controller_information_log
+         create_controller_compute_information_log
         fi
 
         if [ "${RESOURCE:0:7}" == $COMPUTE ]; then
          echo "Resource identified as Compute" 
-         create_compute_information_log
+         create_controller_compute_information_log
         fi
  else
         mkdir $DIR_LOG
@@ -162,12 +169,12 @@ function structure_directories()
  
         if [ "${RESOURCE:0:10}" == $CONTROLLER ]; then
          echo "Resource identified as Controller" 
-         create_controller_information_log
+         create_controller_compute_information_log
         fi
 
         if [ "${RESOURCE:0:7}" == $COMPUTE ]; then
          echo "Resource identified as Compute" 
-         create_compute_information_log
+         create_controller_compute_information_log
         fi
  fi
 
@@ -240,10 +247,9 @@ function check_resource()
 }
 
 function compress_directory(){
- if [ -d "$TEMP" ]
- then
+ if [ -d "$TEMP" ]; then
         cd $TEMP
-        tar -jcf "system_information.tbz2" "$COMPRESS"
+        tar -jcf "system_information.tar.bz2" "$COMPRESS"
         rm -rf $COMPRESS
 	echo "Finished with compressing directories. Ready to send to Stackops and solve your petitions. Located in /tmp"
 
@@ -253,8 +259,8 @@ function compress_directory(){
 }
 
 
-if [ -d "$DIR" ] 
-then    
+if [ -d "$DIR" ]; then
+        [ $(id -u) -eq 0 ] || { echo "$0: Only root may add a user or group to the system."; exit 1;}    
         cd $DIR
         rm system_information.*
         create_system_information

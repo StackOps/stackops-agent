@@ -50,6 +50,8 @@ class PortalConfig(Config):
 
         # Keystone admin password
         self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
+
+        self.horizon_host = self._filler.getPropertyValue(xmldoc, 'horizon', 'host')
         return
 
     def _configurePortal(self):
@@ -88,8 +90,8 @@ class PortalConfig(Config):
 
         # JVM configuration
         utils.execute('sed -i /JAVA_OPTS/d /etc/default/tomcat7')
-        utils.execute('''echo 'JAVA_OPTS="-Djava.awt.headless=true -Xmx768m -XX:+UseConcMarkSweepGC"' >> /etc/default/tomcat7''')
-
+        utils.execute('''echo 'JAVA_OPTS="-Djava.awt.headless=true -Xmx768m -XX:+UseConcMarkSweepGC -Dhibernate.connection.password=%s"' >> /etc/default/tomcat7''' % self.portal_password)
+        utils.execute('''echo 'HORIZON_HOST=%s' >> /etc/default/tomcat7''' % self.horizon_host)
         utils.execute('service tomcat7 stop', check_exit_code=False)
         utils.execute('service tomcat7 start')
         return
@@ -119,6 +121,5 @@ class PortalConfig(Config):
 
     def installPackages(self):
         self.installPackagesCommon()
-        self._installDeb('openjdk-7-jdk tomcat7', interactive=False)
+        self._installDeb('openjdk-7-jdk tomcat7 stackops-portal stackops-documentation-portal-plugin stackops-zendesk-portal-plugin stackops-horizon-portal-plugin', interactive=False)
         return
-

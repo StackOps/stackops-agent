@@ -65,13 +65,13 @@ class GlanceConfig(Config):
         utils.execute(
             "sed -i 's/%%SERVICE_PASSWORD%%/%s/g' /etc/glance/glance-registry-paste.ini" % self.admin_password)
         utils.execute(
-            "sed -i 's/%%SERVICE_TENANT_NAME%%/%s/g' /etc/glance/glance-api-paste.ini" % 'admin')
+            "sed -i 's/%%SERVICE_TENANT_NAME%%/%s/g' /etc/glance/glance-api-paste.ini" % 'service')
         utils.execute(
-            "sed -i 's/%%SERVICE_TENANT_NAME%%/%s/g' /etc/glance/glance-registry-paste.ini" % 'admin')
+            "sed -i 's/%%SERVICE_TENANT_NAME%%/%s/g' /etc/glance/glance-registry-paste.ini" % 'service')
         utils.execute(
-            "sed -i 's/%%SERVICE_USER%%/%s/g' /etc/glance/glance-api-paste.ini" % 'admin')
+            "sed -i 's/%%SERVICE_USER%%/%s/g' /etc/glance/glance-api-paste.ini" % 'glance')
         utils.execute(
-            "sed -i 's/%%SERVICE_USER%%/%s/g' /etc/glance/glance-registry-paste.ini" % 'admin')
+            "sed -i 's/%%SERVICE_USER%%/%s/g' /etc/glance/glance-registry-paste.ini" % 'glance')
         utils.execute(
             "sed -i 's#sql_connection = sqlite:////var/lib/glance/glance.sqlite#sql_connection = %s#g' /etc/glance/glance-registry.conf" % self.glance_sql_connection)
         utils.execute('sed -i "/paste_deploy/d" /etc/glance/glance-registry.conf')

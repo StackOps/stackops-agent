@@ -121,5 +121,5 @@ class PortalConfig(Config):
 
     def installPackages(self):
         self.installPackagesCommon()
-        self._installDeb('openjdk-7-jdk tomcat7 stackops-portal stackops-documentation-portal-plugin stackops-zendesk-portal-plugin stackops-horizon-portal-plugin', interactive=False)
+        self._installDeb('openjdk-7-jdk tomcat7 stackops-portal stackops-documentation-portal-plugin stackops-horizon-portal-plugin', interactive=False)
         return

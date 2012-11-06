@@ -98,7 +98,7 @@ class GlanceConfig(Config):
             utils.execute('echo "\n%s" >> /etc/fstab' % mpoint)
             # mount NFS remote
             utils.execute('mount -a')
-            utils.execute('chown glance:glance /var/lib/glance/images')
+            utils.execute('chown -R glance:glance /var/lib/glance/images')
 
         utils.execute("service glance-api start && service glance-registry start")
 

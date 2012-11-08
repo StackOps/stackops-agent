@@ -965,8 +965,17 @@ class HorizonConfig(Config):
         utils.execute(
             "cp -f %s/favicon-stackops.ico %s/favicon.ico" % (img_path, img_path)
             , check_exit_code=False)
-        utils.execute(
-            "sed -i 's/ENABLE_JUJU_PANEL = True/ENABLE_JUJU_PANEL = False/g' /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py")
+        utils.execute("sed -i 's/ENABLE_JUJU_PANEL = True/ENABLE_JUJU_PANEL = False/g' /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py")
+        utils.execute('sed -i "/LOGIN_URL/d" /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('echo "LOGIN_URL = \'/horizon/auth/login\'" >> /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('sed -i "/LOGIN_REDIRECT_URL/d" /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('echo "LOGIN_REDIRECT_URL = \'/horizon\'" >> /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('sed -i "/MEDIA_URL/d" /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('echo "MEDIA_URL = \'/horizon/media/\'" >> /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('sed -i "/STATIC_URL/d" /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('echo "STATIC_URL = \'/horizon/static/\'" >> /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('sed -i "/ADMIN_MEDIA_PREFIX/d" /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
+        utils.execute('echo "ADMIN_MEDIA_PREFIX = \'/horizon/static/admin/\'" >> /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py')
         return
 
 

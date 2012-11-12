@@ -52,6 +52,10 @@ class PortalConfig(Config):
         self.admin_password = self._filler.getPropertyValue(xmldoc, 'auth_users', 'admin_password', 'password')
 
         self.horizon_host = self._filler.getPropertyValue(xmldoc, 'horizon', 'host')
+        if self.horizon_host==None or len(self.horizon_host)==0:
+            self.horizon_host = self._filler.getPropertyValue(xmldoc, 'interfaces', 'public_ip')
+            if self.horizon_host==None or len(self.horizon_host)==0:
+                self.horizon_host = self.ec2_hostname
         return
 
     def _configurePortal(self):

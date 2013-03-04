@@ -9,7 +9,7 @@
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 5000 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 9292 -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -p tcp -m tcp --dport 443 -j ACCEPT
--A INPUT -d 127.0.0.1/32 -p icmp -m icmp -j ACCEPT
+-A INPUT -d 127.0.0.1/32 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
 -A INPUT -d 127.0.0.1/32 -j DROP
 -A INPUT -i BRIDGEIF -p tcp -m tcp --dport 443 -j ACCEPT
 -A INPUT -i BRIDGEIF -p tcp -m tcp --dport 80 -j ACCEPT
